@@ -1,0 +1,9 @@
+<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Área do Cliente — FIRE BLAZE</title><link rel="stylesheet" href="styles.css"></head>
+<body><header class="topbar"><div class="container nav"><div class="brand">🔥 FIRE <span>BLAZE</span> Cliente</div><a class="btn btn-ghost" href="index.html">Voltar</a></div></header>
+<main class="section"><div class="container narrow"><div class="section-heading"><span class="kicker">ÁREA DO CLIENTE</span><h2>Sua assinatura e seu download</h2><p>Essa área será liberada após o pagamento.</p></div>
+<div class="price-card"><h3 id="hello">Carregando...</h3><div class="plan-list"><li>Status da assinatura: <b id="status">—</b></li><li>Plano: <b id="plan">—</b></li><li>Vencimento: <b id="expires">—</b></li><li>Dispositivo: <b>1 PC autorizado</b></li></div><button class="btn btn-fire full" disabled>DOWNLOAD (libera após pagamento)</button></div></div></main>
+<script>window.FIRE_BLAZE_CONFIG={supabaseUrl:"https://fqwoshdohwcbdgbdvmqc.supabase.co",supabaseKey:"sb_publishable_XMv1L9yIinwd1KuMMa-lUQ_Yj2HZ4qc",apiUrl:"https://fqwoshdohwcbdgbdvmqc.supabase.co/functions/v1/fire-blaze-site"};</script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script>
+const sb=window.supabase.createClient(FIRE_BLAZE_CONFIG.supabaseUrl,FIRE_BLAZE_CONFIG.supabaseKey);
+(async()=>{const {data:{session}}=await sb.auth.getSession();if(!session){location.href='index.html';return}document.getElementById('hello').textContent='Olá, '+(session.user.user_metadata?.name||session.user.email);document.getElementById('status').textContent='Aguardando pagamento';document.getElementById('plan').textContent='FIRE BLAZE Mensal';})();
+</script></body></html>
