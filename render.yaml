@@ -1,0 +1,7 @@
+services:
+  - type: web
+    name: fire-blaze-site
+    runtime: static
+    staticPublishPath: .
+    buildCommand: echo "FIRE BLAZE static site"
+    autoDeploy: true
