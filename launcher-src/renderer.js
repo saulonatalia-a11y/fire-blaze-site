@@ -8,13 +8,18 @@ function renderAccount(a,installedVersion,launcherUpdate){
   current=a;if(!a?.logged){showLogin();return}showPanel();
   const lub=$('launcher-update-box'),lubtn=$('launcher-update');
   if(lub){
-    if(launcherUpdate?.available){lub.hidden=false;$('launcher-update-text').textContent='Nova versão do Launcher: v'+launcherUpdate.latest;lubtn.dataset.url=launcherUpdate.url}
+    if(launcherUpdate?.available){
+      lub.hidden=false;
+      $('launcher-update-text').textContent='ATUALIZAÇÃO OBRIGATÓRIA: v'+launcherUpdate.latest;
+      lubtn.dataset.url=launcherUpdate.url;
+      const launchBtn=$('launch'); if(launchBtn) launchBtn.disabled=true;
+    }
     else lub.hidden=true;
   }
   $('hello').textContent='Olá, '+(a.profile?.name||'Cliente');$('email-line').textContent=a.profile?.email||'';
   $('installed-version').textContent=installedVersion?'Instalada: v'+installedVersion:'Multi ainda não instalado';
   const st=$('status'),warn=$('warn'),renew=$('renew-box'),launch=$('launch');
-  if(a.active){st.textContent='● ATIVA';st.className='status '+(a.warning?'warning':'active');$('days').textContent=(a.days_remaining??0)+' dias';$('expires').textContent='Vence em '+fmtDate(a.subscription?.current_period_end);renew.hidden=!(Number(a.days_remaining)<=3);launch.disabled=false;if(a.warning){warn.hidden=false;warn.textContent='⚠ Sua assinatura termina em '+a.days_remaining+' dia'+(a.days_remaining===1?'':'s')+'. Renove para não interromper o acesso.'}else warn.hidden=true}
+  if(a.active){st.textContent='● ATIVA';st.className='status '+(a.warning?'warning':'active');$('days').textContent=(a.days_remaining??0)+' dias';$('expires').textContent='Vence em '+fmtDate(a.subscription?.current_period_end);renew.hidden=!(Number(a.days_remaining)<=3);launch.disabled=!!launcherUpdate?.available;if(a.warning){warn.hidden=false;warn.textContent='⚠ Sua assinatura termina em '+a.days_remaining+' dia'+(a.days_remaining===1?'':'s')+'. Renove para não interromper o acesso.'}else warn.hidden=true}
   else{st.textContent='● EXPIRADA / INATIVA';st.className='status expired';$('days').textContent='0 dias';$('expires').textContent='Renove para voltar a usar o Multi.';warn.hidden=false;warn.textContent='🔴 O acesso ao FIRE BLAZE Mult está bloqueado até a renovação.';renew.hidden=false;launch.disabled=true}
   const latest=a.latest_version;const update=$('update'),us=$('update-state'),cl=$('changelog');update.hidden=true;cl.textContent='';
   if(latest){
