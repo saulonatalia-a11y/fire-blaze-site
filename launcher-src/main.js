@@ -32,11 +32,16 @@ async function launcherUpdate(){
   }catch{return {available:false,current:LAUNCHER_VERSION};}
 }
 async function runLauncherUpdate(url){
-  if(!/^https:\/\/(github\.com|objects\.githubusercontent\.com|release-assets\.githubusercontent\.com)\//i.test(String(url||'')))throw new Error('Atualização inválida.');
-  const dest=path.join(app.getPath('temp'),'FIRE-BLAZE-Launcher-Update.exe');
-  await downloadFile(url,dest,p=>win?.webContents.send('fb:launcher-update-progress',{progress:p}));
-  spawn(dest,['/S'],{detached:true,stdio:'ignore',windowsHide:false}).unref();
-  setTimeout(()=>app.quit(),700);
+  const updateUrl=String(url||'').trim();
+  if(!/^https:\/\/(github\.com|objects\.githubusercontent\.com|release-assets\.githubusercontent\.com)\//i.test(updateUrl))throw new Error('Atualização inválida.');
+  const dest=path.join(app.getPath('temp'),'FIRE-BLAZE-Launcher-Update-'+Date.now()+'.exe');
+  win?.webContents.send('fb:launcher-update-progress',{stage:'download',progress:0});
+  await downloadFile(updateUrl,dest,p=>win?.webContents.send('fb:launcher-update-progress',{stage:'download',progress:p}));
+  if(!fs.existsSync(dest) || fs.statSync(dest).size < 1024*1024)throw new Error('O instalador da atualização não foi baixado corretamente.');
+  win?.webContents.send('fb:launcher-update-progress',{stage:'install',progress:100});
+  const script = "Start-Sleep -Milliseconds 900; Start-Process -FilePath '"+dest.replace(/'/g,"''")+"' -ArgumentList '/S' -Wait";
+  spawn('powershell.exe',['-NoProfile','-NonInteractive','-ExecutionPolicy','Bypass','-Command',script],{detached:true,stdio:'ignore',windowsHide:true}).unref();
+  setTimeout(()=>app.quit(),250);
   return {ok:true};
 }
 function versionParts(v){ return String(v||'0').replace(/^v/i,'').split('.').map(x=>Number(x)||0); }
