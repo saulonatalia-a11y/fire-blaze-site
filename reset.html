@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Redefinir senha — FIRE BLAZE</title>
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    .reset-wrap{min-height:100vh;display:grid;place-items:center;padding:24px;background:radial-gradient(circle at 20% 0,#32120b 0,#0a0d12 36%,#07090d 75%)}
+    .reset-card{width:min(480px,100%);background:#11161e;border:1px solid #2b3542;border-radius:18px;padding:28px;box-shadow:0 18px 50px #0008}
+    .reset-card h1{margin:8px 0 10px}.reset-card p{color:#aeb7c3;line-height:1.5}
+    .reset-card label{display:block;margin-top:16px;font-weight:800;color:#cbd3dc}
+    .reset-card input{width:100%;margin-top:7px;background:#090d13;color:white;border:1px solid #303947;border-radius:11px;padding:13px}
+    .msg{min-height:24px;margin:12px 0;color:#ffb15c;font-weight:800}
+    .ok{color:#69df9b}
+  </style>
+</head>
+<body>
+  <main class="reset-wrap">
+    <section class="reset-card">
+      <div class="kicker">FIRE BLAZE</div>
+      <h1>Crie uma nova senha</h1>
+      <p id="intro">Digite sua nova senha para voltar a acessar sua conta.</p>
+
+      <div id="form-box">
+        <label>Nova senha
+          <input id="new-password" type="password" minlength="8" autocomplete="new-password">
+        </label>
+        <label>Confirmar nova senha
+          <input id="confirm-password" type="password" minlength="8" autocomplete="new-password">
+        </label>
+        <div id="msg" class="msg"></div>
+        <button id="save-password" class="btn btn-fire full">SALVAR NOVA SENHA</button>
+      </div>
+
+      <div id="done-box" hidden>
+        <div class="msg ok">Senha alterada com sucesso.</div>
+        <a class="btn btn-fire full" href="index.html">VOLTAR PARA ENTRAR</a>
+      </div>
+    </section>
+  </main>
+
+<script>
+window.FIRE_BLAZE_CONFIG={
+  supabaseUrl:"https://fqwoshdohwcbdgbdvmqc.supabase.co",
+  supabaseKey:"sb_publishable_XMv1L9yIinwd1KuMMa-lUQ_Yj2HZ4qc"
+};
+</script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const cfg=window.FIRE_BLAZE_CONFIG;
+const sb=window.supabase.createClient(cfg.supabaseUrl,cfg.supabaseKey);
+const msg=document.getElementById('msg');
+const save=document.getElementById('save-password');
+
+async function ensureRecoverySession(){
+  const {data}=await sb.auth.getSession();
+  if(data.session) return true;
+
+  const url=new URL(location.href);
+  const code=url.searchParams.get('code');
+  if(code){
+    const {error}=await sb.auth.exchangeCodeForSession(code);
+    if(error){
+      msg.textContent='O link de recuperação é inválido ou expirou. Solicite outro link.';
+      save.disabled=true;
+      return false;
+    }
+    return true;
+  }
+
+  msg.textContent='O link de recuperação é inválido ou expirou. Solicite outro link.';
+  save.disabled=true;
+  return false;
+}
+
+save.onclick=async()=>{
+  const p1=document.getElementById('new-password').value;
+  const p2=document.getElementById('confirm-password').value;
+  if(p1.length<8){msg.textContent='A senha precisa ter pelo menos 8 caracteres.';return}
+  if(p1!==p2){msg.textContent='As duas senhas não são iguais.';return}
+
+  save.disabled=true;
+  msg.textContent='Salvando nova senha...';
+  const ok=await ensureRecoverySession();
+  if(!ok)return;
+
+  const {error}=await sb.auth.updateUser({password:p1});
+  if(error){
+    msg.textContent='Não foi possível alterar a senha: '+error.message;
+    save.disabled=false;
+    return;
+  }
+
+  document.getElementById('form-box').hidden=true;
+  document.getElementById('done-box').hidden=false;
+  document.getElementById('intro').textContent='Sua senha foi atualizada. Agora você pode entrar novamente.';
+};
+
+ensureRecoverySession();
+</script>
+</body>
+</html>
