@@ -1,9 +1,208 @@
-<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Área do Cliente — FIRE BLAZE</title><link rel="stylesheet" href="styles.css"></head>
-<body><header class="topbar"><div class="container nav"><div class="brand">🔥 FIRE <span>BLAZE</span> Cliente</div><a class="btn btn-ghost" href="index.html">Voltar</a></div></header>
-<main class="section"><div class="container narrow"><div class="section-heading"><span class="kicker">ÁREA DO CLIENTE</span><h2>Sua assinatura e seu download</h2><p>Essa área será liberada após o pagamento.</p></div>
-<div class="price-card"><h3 id="hello">Carregando...</h3><div class="plan-list"><li>Status da assinatura: <b id="status">—</b></li><li>Plano: <b id="plan">—</b></li><li>Vencimento: <b id="expires">—</b></li><li>Dispositivo: <b>1 PC autorizado</b></li></div><button class="btn btn-fire full" disabled>DOWNLOAD (libera após pagamento)</button></div></div></main>
-<script>window.FIRE_BLAZE_CONFIG={supabaseUrl:"https://fqwoshdohwcbdgbdvmqc.supabase.co",supabaseKey:"sb_publishable_XMv1L9yIinwd1KuMMa-lUQ_Yj2HZ4qc",apiUrl:"https://fqwoshdohwcbdgbdvmqc.supabase.co/functions/v1/fire-blaze-site"};</script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script>
-const sb=window.supabase.createClient(FIRE_BLAZE_CONFIG.supabaseUrl,FIRE_BLAZE_CONFIG.supabaseKey);
-(async()=>{const {data:{session}}=await sb.auth.getSession();if(!session){location.href='index.html';return}document.getElementById('hello').textContent='Olá, '+(session.user.user_metadata?.name||session.user.email);document.getElementById('status').textContent='Aguardando pagamento';document.getElementById('plan').textContent='FIRE BLAZE Mensal';})();
-</script></body></html>
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Área do Cliente — FIRE BLAZE</title>
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    .client-grid{display:grid;grid-template-columns:1.15fr .85fr;gap:22px;align-items:start}
+    .status-pill{display:inline-flex;align-items:center;gap:8px;padding:8px 12px;border-radius:999px;font-weight:800;background:#171d25;border:1px solid #303a47}
+    .status-pill.active{border-color:#1f9d55;color:#78e6a8}.status-pill.waiting{color:#ffc46b}
+    .pay-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:18px}
+    .pay-card{background:#0b0f15;border:1px solid #2b3542;border-radius:14px;padding:18px}
+    .pay-card h4{margin:0 0 8px}.pay-card p{color:#aeb7c3;line-height:1.45;min-height:44px}
+    .client-note{color:#aeb7c3;line-height:1.55;margin-top:12px}
+    .mini{font-size:13px;color:#8d98a6}.actions-row{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
+    @media(max-width:820px){.client-grid,.pay-grid{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+<header class="topbar">
+  <div class="container nav">
+    <div class="brand">🔥 FIRE <span>BLAZE</span> Cliente</div>
+    <div class="nav-actions">
+      <button class="btn btn-ghost" id="refresh">Atualizar status</button>
+      <button class="btn btn-ghost" id="logout">Sair</button>
+    </div>
+  </div>
+</header>
+
+<main class="section">
+  <div class="container">
+    <div class="section-heading">
+      <span class="kicker">ÁREA DO CLIENTE</span>
+      <h2>Sua assinatura e seu download</h2>
+      <p id="top-msg">Carregando sua conta...</p>
+    </div>
+
+    <div class="client-grid">
+      <div class="price-card">
+        <h3 id="hello">Carregando...</h3>
+        <div id="status-pill" class="status-pill waiting">● Verificando assinatura</div>
+        <ul class="plan-list">
+          <li>Status: <b id="status">—</b></li>
+          <li>Plano: <b id="plan">—</b></li>
+          <li>Valor: <b id="price">—</b></li>
+          <li>Vencimento: <b id="expires">—</b></li>
+          <li>Dispositivo: <b>1 PC autorizado</b></li>
+        </ul>
+
+        <div id="inactive-area">
+          <h3>Escolha como pagar</h3>
+          <div class="pay-grid">
+            <div class="pay-card">
+              <h4>⚡ Pix</h4>
+              <p>Pagamento instantâneo. Libera 30 dias de acesso após a confirmação.</p>
+              <button class="btn btn-fire full" data-pay="pix">PAGAR COM PIX</button>
+              <div class="mini">Renovação mensal feita por um novo Pix.</div>
+            </div>
+            <div class="pay-card">
+              <h4>💳 Cartão</h4>
+              <p>Assinatura mensal com renovação automática no cartão.</p>
+              <button class="btn btn-fire full" data-pay="credit_card">ASSINAR COM CARTÃO</button>
+              <div class="mini">Cobrança recorrente mensal.</div>
+            </div>
+          </div>
+          <div id="pay-msg" class="form-msg"></div>
+        </div>
+
+        <div id="active-area" hidden>
+          <h3>✅ Acesso liberado</h3>
+          <p class="client-note">Seu pagamento foi confirmado e sua assinatura está ativa.</p>
+          <a id="download-btn" class="btn btn-fire btn-lg full" href="#" target="_blank" rel="noopener">BAIXAR FIRE BLAZE MULT</a>
+          <div id="download-note" class="client-note"></div>
+        </div>
+      </div>
+
+      <div class="price-card">
+        <h3>Como funciona</h3>
+        <ul class="plan-list">
+          <li>1. Crie sua conta FIRE BLAZE</li>
+          <li>2. Pague por Pix ou cartão</li>
+          <li>3. O Asaas confirma o pagamento</li>
+          <li>4. Sua assinatura é ativada automaticamente</li>
+          <li>5. O download fica disponível nesta página</li>
+        </ul>
+        <p class="client-note">Se acabou de pagar, a confirmação pode levar alguns segundos. Use “Atualizar status”.</p>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script>
+window.FIRE_BLAZE_CONFIG={
+  supabaseUrl:"https://fqwoshdohwcbdgbdvmqc.supabase.co",
+  supabaseKey:"sb_publishable_XMv1L9yIinwd1KuMMa-lUQ_Yj2HZ4qc",
+  apiUrl:"https://fqwoshdohwcbdgbdvmqc.supabase.co/functions/v1/fire-blaze-site",
+  checkoutUrl:"https://fqwoshdohwcbdgbdvmqc.supabase.co/functions/v1/fire-blaze-checkout"
+};
+</script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const cfg=window.FIRE_BLAZE_CONFIG;
+const sb=window.supabase.createClient(cfg.supabaseUrl,cfg.supabaseKey);
+let session=null,selectedPlan=null;
+
+function brl(cents,currency='BRL'){
+  return new Intl.NumberFormat('pt-BR',{style:'currency',currency}).format((Number(cents)||0)/100);
+}
+function dateBR(v){
+  if(!v)return '—';
+  const d=new Date(v); return Number.isNaN(d.getTime())?'—':d.toLocaleDateString('pt-BR');
+}
+async function api(name){
+  const headers={'Content-Type':'application/json'};
+  if(session?.access_token)headers.Authorization='Bearer '+session.access_token;
+  const r=await fetch(cfg.apiUrl+'?api='+encodeURIComponent(name),{headers});
+  return r.json();
+}
+async function loadPlans(){
+  const d=await api('plans');
+  selectedPlan=(d.plans||[]).find(p=>p.is_featured)||(d.plans||[])[0]||null;
+}
+async function loadAccount(){
+  const d=await api('account');
+  if(!d.ok){
+    document.getElementById('top-msg').textContent=d.error||'Não foi possível carregar sua conta.';
+    return;
+  }
+  if(!selectedPlan)await loadPlans();
+  const plan=d.plan||selectedPlan;
+  document.getElementById('hello').textContent='Olá, '+(d.profile?.name||session.user.email);
+  document.getElementById('plan').textContent=plan?.name||'FIRE BLAZE Mensal';
+  document.getElementById('price').textContent=plan?brl(plan.price_cents,plan.currency||'BRL'):'—';
+  document.getElementById('expires').textContent=dateBR(d.subscription?.current_period_end);
+
+  const pill=document.getElementById('status-pill');
+  const inactive=document.getElementById('inactive-area');
+  const active=document.getElementById('active-area');
+  const download=document.getElementById('download-btn');
+  const note=document.getElementById('download-note');
+
+  if(d.active){
+    document.getElementById('status').textContent='ATIVA';
+    pill.textContent='● Assinatura ativa';
+    pill.className='status-pill active';
+    inactive.hidden=true; active.hidden=false;
+    document.getElementById('top-msg').textContent='Seu acesso está liberado.';
+    if(d.download?.download_url){
+      download.href=d.download.download_url;
+      download.removeAttribute('aria-disabled');
+      download.style.pointerEvents='auto';
+      download.style.opacity='1';
+      download.textContent='BAIXAR FIRE BLAZE MULT'+(d.download.version?' — v'+d.download.version:'');
+      note.textContent=d.download.title||'Versão atual disponível para download.';
+    }else{
+      download.href='#';
+      download.setAttribute('aria-disabled','true');
+      download.style.pointerEvents='none';
+      download.style.opacity='.55';
+      download.textContent='DOWNLOAD AINDA NÃO PUBLICADO';
+      note.textContent='Sua assinatura já está ativa. Falta apenas publicar o instalador na área de downloads.';
+    }
+  }else{
+    const st=d.subscription?.status||'pending';
+    document.getElementById('status').textContent=st==='past_due'?'PAGAMENTO PENDENTE':'AGUARDANDO PAGAMENTO';
+    pill.textContent='● Aguardando pagamento';
+    pill.className='status-pill waiting';
+    inactive.hidden=false; active.hidden=true;
+    document.getElementById('top-msg').textContent='Escolha Pix ou cartão para liberar seu acesso.';
+  }
+}
+async function startCheckout(method){
+  const msg=document.getElementById('pay-msg');
+  const btn=document.querySelector('[data-pay="'+method+'"]');
+  btn.disabled=true; msg.textContent='Abrindo pagamento seguro no Asaas...';
+  try{
+    const r=await fetch(cfg.checkoutUrl,{
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+session.access_token},
+      body:JSON.stringify({method,plan_id:selectedPlan?.id})
+    });
+    const d=await r.json();
+    if(!r.ok||!d.ok)throw new Error(d.error||'Não foi possível criar o pagamento.');
+    if(!d.checkout_url)throw new Error('Checkout não retornado pelo Asaas.');
+    location.href=d.checkout_url;
+  }catch(e){
+    msg.textContent=e.message||'Erro ao abrir pagamento.';
+    btn.disabled=false;
+  }
+}
+
+document.querySelectorAll('[data-pay]').forEach(b=>b.onclick=()=>startCheckout(b.dataset.pay));
+document.getElementById('refresh').onclick=async()=>{document.getElementById('top-msg').textContent='Atualizando...';await loadAccount()};
+document.getElementById('logout').onclick=async()=>{await sb.auth.signOut();location.href='index.html'};
+
+(async()=>{
+  const s=await sb.auth.getSession(); session=s.data.session;
+  if(!session){location.href='index.html';return}
+  await loadPlans();
+  await loadAccount();
+  if(new URL(location.href).searchParams.get('checkout')==='success'){
+    let n=0; const timer=setInterval(async()=>{n++;await loadAccount();if(n>=6)clearInterval(timer)},3000);
+  }
+})();
+</script>
+</body>
+</html>
