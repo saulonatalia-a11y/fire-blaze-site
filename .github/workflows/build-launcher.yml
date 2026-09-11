@@ -23,10 +23,27 @@ jobs:
         with:
           node-version: '22'
 
-      - name: Decode flame icon
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Generate flame icon
         shell: pwsh
         run: |
-          [IO.File]::WriteAllBytes("fire.ico",[Convert]::FromBase64String((Get-Content "fire.ico.b64" -Raw)))
+          python -m pip install pillow
+          @'
+          from PIL import Image, ImageDraw
+          img=Image.new("RGBA",(256,256),(0,0,0,0))
+          d=ImageDraw.Draw(img)
+          outer=[(128,18),(155,64),(151,91),(181,75),(193,111),(190,151),(174,188),(146,218),(111,229),(78,211),(58,178),(55,144),(69,108),(91,79),(103,49)]
+          d.polygon(outer,fill=(255,76,20,255))
+          inner=[(126,82),(143,111),(139,133),(157,124),(163,150),(154,181),(132,200),(106,195),(88,174),(88,149),(100,127),(112,110)]
+          d.polygon(inner,fill=(255,190,40,255))
+          core=[(124,128),(136,149),(132,165),(142,160),(143,177),(133,190),(117,189),(107,178),(108,162)]
+          d.polygon(core,fill=(255,244,181,255))
+          img.save("fire.ico",sizes=[(16,16),(24,24),(32,32),(48,48),(64,64),(128,128),(256,256)])
+          '@ | Set-Content make_icon.py
+          python make_icon.py
 
       - name: Install dependencies
         run: npm install
