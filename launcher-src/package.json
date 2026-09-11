@@ -1,6 +1,6 @@
 {
   "name": "fire-blaze-launcher",
-  "version": "1.1.7",
+  "version": "1.2.0",
   "private": true,
   "productName": "FIRE BLAZE Launcher",
   "main": "main.js",
@@ -25,7 +25,9 @@
       "fire.ico"
     ],
     "win": {
-      "target": ["nsis"],
+      "target": [
+        "nsis"
+      ],
       "icon": "fire.ico",
       "artifactName": "FIRE-BLAZE-Launcher-Setup-v${version}.${ext}"
     },
@@ -36,7 +38,20 @@
       "createStartMenuShortcut": true,
       "shortcutName": "FIRE BLAZE Launcher",
       "installerIcon": "fire.ico",
-      "uninstallerIcon": "fire.ico"
-    }
+      "uninstallerIcon": "fire.ico",
+      "perMachine": false,
+      "allowElevation": true,
+      "deleteAppDataOnUninstall": false
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "saulonatalia-a11y",
+        "repo": "fire-blaze-site"
+      }
+    ]
+  },
+  "dependencies": {
+    "electron-updater": "^6.6.2"
   }
 }
