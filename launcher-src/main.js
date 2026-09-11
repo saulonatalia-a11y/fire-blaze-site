@@ -27,7 +27,21 @@ function hideInternalTree(){
     if(fs.existsSync(runtime))execFileSync('attrib.exe',['+h',runtime],{windowsHide:true,timeout:5000});
   }catch{}
 }
-function installedExe(version){ return path.join(installedRoot(),version,'FIRE BLAZE Mult.exe'); }
+function findMultiExe(dir){
+  try{
+    if(!fs.existsSync(dir))return '';
+    const direct=path.join(dir,'FIRE BLAZE Mult.exe');
+    if(fs.existsSync(direct))return direct;
+    for(const ent of fs.readdirSync(dir,{withFileTypes:true})){
+      if(ent.isDirectory()){
+        const found=findMultiExe(path.join(dir,ent.name));
+        if(found)return found;
+      }
+    }
+  }catch{}
+  return '';
+}
+function installedExe(version){ return findMultiExe(path.join(installedRoot(),version)); }
 function iconPath(){ return path.join(__dirname,'fire.ico'); }
 let updateCache={available:false,current:LAUNCHER_VERSION};
 autoUpdater.autoDownload=false;
@@ -140,7 +154,7 @@ function installedVersionFromDisk(){
     const root=installedRoot();
     if(!fs.existsSync(root))return '';
     const versions=fs.readdirSync(root,{withFileTypes:true})
-      .filter(x=>x.isDirectory() && fs.existsSync(path.join(root,x.name,'FIRE BLAZE Mult.exe')))
+      .filter(x=>x.isDirectory() && !!findMultiExe(path.join(root,x.name)))
       .map(x=>x.name)
       .sort((a,b)=>compareVersions(b,a));
     return versions[0]||'';
@@ -176,7 +190,7 @@ async function ensureInstalled(acc){
   if(!latest?.version)throw new Error('Nenhuma versão do FIRE BLAZE Mult foi publicada.');
   const version=String(latest.version).replace(/^v/i,'');
   const exe=installedExe(version);
-  if(fs.existsSync(exe)){hideInternalTree();return {installed:true,path:exe,version};}
+  if(exe && fs.existsSync(exe)){hideInternalTree();removeLegacyMultiDesktopShortcut();return {installed:true,path:exe,version};}
   if(!latest.download_url)throw new Error('O pacote do FIRE BLAZE Mult ainda não foi publicado no servidor.');
 
   const tempRoot=path.join(app.getPath('temp'),'FIRE-BLAZE-Install');
@@ -201,15 +215,8 @@ async function ensureInstalled(acc){
     "Expand-Archive -LiteralPath '"+zip.replace(/'/g,"''")+"' -DestinationPath '"+target.replace(/'/g,"''")+"' -Force"
   ],{windowsHide:true,timeout:180000});
 
-  let found=exe;
-  if(!fs.existsSync(found)){
-    const dirs=fs.readdirSync(target,{withFileTypes:true}).filter(x=>x.isDirectory());
-    for(const d of dirs){
-      const cand=path.join(target,d.name,'FIRE BLAZE Mult.exe');
-      if(fs.existsSync(cand)){ found=cand; break; }
-    }
-  }
-  if(!fs.existsSync(found))throw new Error('O pacote foi baixado, mas o executável FIRE BLAZE Mult.exe não foi encontrado.');
+  let found=findMultiExe(target);
+  if(!found || !fs.existsSync(found))throw new Error('O pacote foi baixado, mas o executável FIRE BLAZE Mult.exe não foi encontrado.');
   fs.writeFileSync(path.join(target,'.fireblaze-installed'),new Date().toISOString());
   fs.rmSync(zip,{force:true});
   try{fs.rmSync(tempRoot,{recursive:true,force:true});}catch{}
