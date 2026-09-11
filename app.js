@@ -81,22 +81,21 @@ document.getElementById('register-btn').addEventListener('click',async()=>{
     return;
   }
   msg.textContent='Criando sua conta...';
-  const {data,error}=await sbClient.auth.signUp({
-    email,
-    password,
-    options:{
-      emailRedirectTo:location.origin+'/cliente.html',
-      data:{name,whatsapp,whatsapp_opt_in:opt}
-    }
-  });
-  if(error){msg.textContent=error.message;return;}
-  if(data.session){
-    await api('bootstrap',{method:'POST'});
+  try{
+    const r=await fetch(cfg.supabaseUrl+'/functions/v1/fire-blaze-signup',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({name,whatsapp,email,password,whatsapp_opt_in:opt})
+    });
+    const out=await r.json();
+    if(!r.ok || !out.ok){msg.textContent=out.error||'Não foi possível criar a conta.';return;}
+    const {error}=await sbClient.auth.signInWithPassword({email,password});
+    if(error){msg.textContent='Conta criada, mas não foi possível entrar automaticamente.';return;}
     closeAuth();
     location.href='cliente.html';
-    return;
+  }catch(e){
+    msg.textContent='Erro de conexão ao criar a conta.';
   }
-  showEmailConfirmation(email);
 });
 
 document.getElementById('login-btn').addEventListener('click',async()=>{
