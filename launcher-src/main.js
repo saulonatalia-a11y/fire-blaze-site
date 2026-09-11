@@ -1,4 +1,5 @@
 const { app, BrowserWindow, ipcMain, shell, safeStorage, dialog } = require('electron');
+const { autoUpdater } = require('electron-updater');
 const path = require('path');
 const fs = require('fs');
 const os = require('os');
@@ -19,32 +20,38 @@ function authFile(){ return path.join(app.getPath('userData'),'auth.bin'); }
 function installedRoot(){ return path.join(process.env.LOCALAPPDATA || app.getPath('userData'),'FIRE BLAZE','Mult'); }
 function installedExe(version){ return path.join(installedRoot(),version,'FIRE BLAZE Mult.exe'); }
 function iconPath(){ return path.join(__dirname,'fire.ico'); }
+let updateCache={available:false,current:LAUNCHER_VERSION};
+autoUpdater.autoDownload=false;
+autoUpdater.autoInstallOnAppQuit=true;
+autoUpdater.allowPrerelease=false;
+
+autoUpdater.on('download-progress',p=>{
+  win?.webContents.send('fb:launcher-update-progress',{stage:'download',progress:Math.round(Number(p.percent||0))});
+});
+autoUpdater.on('update-downloaded',()=>{
+  win?.webContents.send('fb:launcher-update-progress',{stage:'install',progress:100});
+  setTimeout(()=>autoUpdater.quitAndInstall(false,true),300);
+});
+autoUpdater.on('error',err=>{
+  win?.webContents.send('fb:launcher-update-progress',{stage:'error',error:String(err?.message||err||'Falha ao atualizar.')});
+});
+
 async function launcherUpdate(){
   try{
-    const r=await fetch(LAUNCHER_RELEASE_API,{headers:{'accept':'application/vnd.github+json','user-agent':'FIRE-BLAZE-Launcher'}});
-    if(!r.ok)return {available:false,current:LAUNCHER_VERSION};
-    const releases=await r.json();
-    const rel=(Array.isArray(releases)?releases:[]).find(x=>/^launcher-v/i.test(String(x.tag_name||'')) && !x.draft && !x.prerelease);
-    if(!rel)return {available:false,current:LAUNCHER_VERSION};
-    const latest=String(rel.tag_name||'').replace(/^launcher-v/i,'');
-    const asset=(rel.assets||[]).find(a=>/FIRE-BLAZE-Launcher-Setup.*\.exe$/i.test(a.name));
-    return {available:!!asset&&compareVersions(latest,LAUNCHER_VERSION)>0,current:LAUNCHER_VERSION,latest,url:asset?.browser_download_url||''};
-  }catch{return {available:false,current:LAUNCHER_VERSION};}
+    const result=await autoUpdater.checkForUpdates();
+    const latest=String(result?.updateInfo?.version||LAUNCHER_VERSION);
+    const available=compareVersions(latest,LAUNCHER_VERSION)>0;
+    updateCache={available,current:LAUNCHER_VERSION,latest};
+    return updateCache;
+  }catch(e){
+    updateCache={available:false,current:LAUNCHER_VERSION,error:String(e?.message||e)};
+    return updateCache;
+  }
 }
 async function runLauncherUpdate(){
-  const info=await launcherUpdate();
-  if(!info?.available || !info?.url)throw new Error('Nenhuma atualização válida foi encontrada.');
-  const updateUrl=String(info.url).trim();
-  const dest=path.join(app.getPath('temp'),'FIRE-BLAZE-Launcher-Update-'+Date.now()+'.exe');
-  win?.webContents.send('fb:launcher-update-progress',{stage:'download',progress:0});
-  await downloadFile(updateUrl,dest,p=>win?.webContents.send('fb:launcher-update-progress',{stage:'download',progress:p}));
-  if(!fs.existsSync(dest) || fs.statSync(dest).size < 1024*1024)throw new Error('O instalador da atualização não foi baixado corretamente.');
-  win?.webContents.send('fb:launcher-update-progress',{stage:'install',progress:100});
-  const currentExe=process.execPath;
-  const script = "$ErrorActionPreference='Stop'; Start-Sleep -Seconds 2; $p=Start-Process -FilePath '"+dest.replace(/'/g,"''")+"' -ArgumentList '/S' -PassThru; $p.WaitForExit(); Start-Sleep -Seconds 1; if(Test-Path '"+currentExe.replace(/'/g,"''")+"'){ Start-Process -FilePath '"+currentExe.replace(/'/g,"''")+"' }";
-  const child=spawn('powershell.exe',['-NoProfile','-ExecutionPolicy','Bypass','-Command',script],{detached:true,stdio:'ignore',windowsHide:true});
-  child.unref();
-  setTimeout(()=>app.exit(0),700);
+  const state=await launcherUpdate();
+  if(!state.available)throw new Error('Nenhuma atualização nova foi encontrada.');
+  await autoUpdater.downloadUpdate();
   return {ok:true};
 }
 function versionParts(v){ return String(v||'0').replace(/^v/i,'').split('.').map(x=>Number(x)||0); }
