@@ -95,7 +95,8 @@ window.FIRE_BLAZE_CONFIG={
   supabaseUrl:"https://fqwoshdohwcbdgbdvmqc.supabase.co",
   supabaseKey:"sb_publishable_XMv1L9yIinwd1KuMMa-lUQ_Yj2HZ4qc",
   apiUrl:"https://fqwoshdohwcbdgbdvmqc.supabase.co/functions/v1/fire-blaze-site",
-  checkoutUrl:"https://fqwoshdohwcbdgbdvmqc.supabase.co/functions/v1/fire-blaze-checkout"
+  checkoutUrl:"https://fqwoshdohwcbdgbdvmqc.supabase.co/functions/v1/fire-blaze-checkout",
+  launcherUrl:"https://github.com/saulonatalia-a11y/fire-blaze-site/releases/download/launcher-v1.0.0/FIRE-BLAZE-Launcher-Setup-v1.0.0.exe"
 };
 </script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -146,21 +147,12 @@ async function loadAccount(){
     pill.className='status-pill active';
     inactive.hidden=true; active.hidden=false;
     document.getElementById('top-msg').textContent='Seu acesso está liberado.';
-    if(d.download?.download_url){
-      download.href=d.download.download_url;
-      download.removeAttribute('aria-disabled');
-      download.style.pointerEvents='auto';
-      download.style.opacity='1';
-      download.textContent='BAIXAR FIRE BLAZE MULT'+(d.download.version?' — v'+d.download.version:'');
-      note.textContent=d.download.title||'Versão atual disponível para download.';
-    }else{
-      download.href='#';
-      download.setAttribute('aria-disabled','true');
-      download.style.pointerEvents='none';
-      download.style.opacity='.55';
-      download.textContent='DOWNLOAD AINDA NÃO PUBLICADO';
-      note.textContent='Sua assinatura já está ativa. Falta apenas publicar o instalador na área de downloads.';
-    }
+    download.href=cfg.launcherUrl;
+    download.removeAttribute('aria-disabled');
+    download.style.pointerEvents='auto';
+    download.style.opacity='1';
+    download.textContent='BAIXAR FIRE BLAZE LAUNCHER';
+    note.textContent='Instale o Launcher e entre com esta mesma conta para abrir o FIRE BLAZE Mult.';
   }else{
     const st=d.subscription?.status||'pending';
     document.getElementById('status').textContent=st==='past_due'?'PAGAMENTO PENDENTE':'AGUARDANDO PAGAMENTO';
