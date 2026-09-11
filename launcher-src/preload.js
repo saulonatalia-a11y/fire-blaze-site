@@ -8,7 +8,7 @@ contextBridge.exposeInMainWorld('fireBlaze',{
   refresh:()=>ipcRenderer.invoke('fb:refresh'),
   openUpdate:url=>ipcRenderer.invoke('fb:open-update',url),
   openCustomer:()=>ipcRenderer.invoke('fb:open-customer'),
-  updateLauncher:url=>ipcRenderer.invoke('fb:launcher-update',url),
+  updateLauncher:()=>ipcRenderer.invoke('fb:launcher-update'),
   onLauncherUpdateProgress:cb=>ipcRenderer.on('fb:launcher-update-progress',(_e,p)=>cb(p)),
   onInstallProgress:fn=>ipcRenderer.on('fb:install-progress',(_e,data)=>fn(data))
 });
