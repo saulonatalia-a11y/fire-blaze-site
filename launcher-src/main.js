@@ -10,6 +10,8 @@ const SUPABASE_KEY='sb_publishable_XMv1L9yIinwd1KuMMa-lUQ_Yj2HZ4qc';
 const LICENSE_URL=SUPABASE_URL+'/functions/v1/fire-blaze-license';
 const CHECKOUT_URL=SUPABASE_URL+'/functions/v1/fire-blaze-checkout';
 const CUSTOMER_URL='https://fire-blaze-site.onrender.com/cliente.html';
+const LAUNCHER_RELEASE_API='https://api.github.com/repos/saulonatalia-a11y/fire-blaze-site/releases/latest';
+const LAUNCHER_VERSION=app.getVersion();
 let win=null;
 let auth=null;
 
@@ -17,6 +19,24 @@ function authFile(){ return path.join(app.getPath('userData'),'auth.bin'); }
 function installedRoot(){ return path.join(process.env.LOCALAPPDATA || app.getPath('userData'),'FIRE BLAZE','Mult'); }
 function installedExe(version){ return path.join(installedRoot(),version,'FIRE BLAZE Mult.exe'); }
 function iconPath(){ return path.join(__dirname,'fire.ico'); }
+async function launcherUpdate(){
+  try{
+    const r=await fetch(LAUNCHER_RELEASE_API,{headers:{'accept':'application/vnd.github+json','user-agent':'FIRE-BLAZE-Launcher'}});
+    if(!r.ok)return {available:false,current:LAUNCHER_VERSION};
+    const rel=await r.json();
+    const latest=String(rel.tag_name||'').replace(/^launcher-v/i,'');
+    const asset=(rel.assets||[]).find(a=>/FIRE-BLAZE-Launcher-Setup.*\.exe$/i.test(a.name));
+    return {available:!!asset&&compareVersions(latest,LAUNCHER_VERSION)>0,current:LAUNCHER_VERSION,latest,url:asset?.browser_download_url||''};
+  }catch{return {available:false,current:LAUNCHER_VERSION};}
+}
+async function runLauncherUpdate(url){
+  if(!/^https:\/\/github\.com\//i.test(String(url||'')))throw new Error('Atualização inválida.');
+  const dest=path.join(app.getPath('temp'),'FIRE-BLAZE-Launcher-Update.exe');
+  await downloadFile(url,dest,p=>win?.webContents.send('fb:launcher-update-progress',{progress:p}));
+  spawn(dest,['/S'],{detached:true,stdio:'ignore',windowsHide:false}).unref();
+  setTimeout(()=>app.quit(),700);
+  return {ok:true};
+}
 function versionParts(v){ return String(v||'0').replace(/^v/i,'').split('.').map(x=>Number(x)||0); }
 function compareVersions(a,b){ const A=versionParts(a),B=versionParts(b); for(let i=0;i<Math.max(A.length,B.length);i++){const d=(A[i]||0)-(B[i]||0);if(d)return d;} return 0; }
 
@@ -198,7 +218,7 @@ function createWindow(){
   win=new BrowserWindow({width:1060,height:720,minWidth:900,minHeight:620,backgroundColor:'#07090d',title:'FIRE BLAZE Launcher',icon:iconPath(),autoHideMenuBar:true,webPreferences:{preload:path.join(__dirname,'preload.js'),contextIsolation:true,nodeIntegration:false,sandbox:true}});
   win.loadFile('index.html');
 }
-ipcMain.handle('fb:state',async()=>({account:await account(),installed_version:installedVersionFromDisk(),device_name:deviceName()}));
+ipcMain.handle('fb:state',async()=>({account:await account(),installed_version:installedVersionFromDisk(),device_name:deviceName(),launcher_update:await launcherUpdate()}));
 ipcMain.handle('fb:login',async(_e,email,password)=>{await login(String(email||'').trim(),String(password||''));createDesktopShortcut();return {ok:true,account:await account()};});
 ipcMain.handle('fb:logout',async()=>{saveAuth(null);return {ok:true};});
 ipcMain.handle('fb:launch',async()=>launchMulti());
@@ -206,6 +226,7 @@ ipcMain.handle('fb:renew',async(_e,method)=>renew(String(method||'')));
 ipcMain.handle('fb:refresh',async()=>account());
 ipcMain.handle('fb:open-update',async(_e,url)=>{if(/^https:\/\//i.test(String(url||'')))await shell.openExternal(String(url));return true;});
 ipcMain.handle('fb:open-customer',async()=>{await shell.openExternal(CUSTOMER_URL);return true;});
+ipcMain.handle('fb:launcher-update',async(_e,url)=>runLauncherUpdate(String(url||'')));
 
 if(!app.requestSingleInstanceLock())app.quit();
 else{
