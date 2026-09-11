@@ -1,0 +1,48 @@
+name: Build FIRE BLAZE Launcher
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'launcher-src/**'
+      - '.github/workflows/build-launcher.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: launcher-src
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: launcher-src/package-lock.json
+
+      - name: Decode flame icon
+        shell: pwsh
+        run: |
+          [IO.File]::WriteAllBytes("fire.ico",[Convert]::FromBase64String((Get-Content "fire.ico.b64" -Raw)))
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build Windows installer
+        run: npm run dist
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: launcher-v1.0.0
+          name: FIRE BLAZE Launcher v1.0.0
+          body: |
+            Instalador oficial do FIRE BLAZE Launcher/Painel.
+            Faça login com a mesma conta usada no site.
+          files: launcher-src/dist/FIRE-BLAZE-Launcher-Setup-v1.0.0.exe
+          make_latest: true
