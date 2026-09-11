@@ -17,7 +17,16 @@ let win=null;
 let auth=null;
 
 function authFile(){ return path.join(app.getPath('userData'),'auth.bin'); }
-function installedRoot(){ return path.join(process.env.LOCALAPPDATA || app.getPath('userData'),'FIRE BLAZE','Mult'); }
+function installedRoot(){ return path.join(process.env.LOCALAPPDATA || app.getPath('userData'),'FIRE BLAZE','.runtime','Mult'); }
+function hideInternalTree(){
+  if(process.platform!=='win32')return;
+  try{
+    const base=path.join(process.env.LOCALAPPDATA || app.getPath('userData'),'FIRE BLAZE');
+    if(fs.existsSync(base))execFileSync('attrib.exe',['+h',base],{windowsHide:true,timeout:5000});
+    const runtime=path.join(base,'.runtime');
+    if(fs.existsSync(runtime))execFileSync('attrib.exe',['+h',runtime],{windowsHide:true,timeout:5000});
+  }catch{}
+}
 function installedExe(version){ return path.join(installedRoot(),version,'FIRE BLAZE Mult.exe'); }
 function iconPath(){ return path.join(__dirname,'fire.ico'); }
 let updateCache={available:false,current:LAUNCHER_VERSION};
@@ -173,7 +182,7 @@ async function ensureInstalled(acc){
   if(!latest?.version)throw new Error('Nenhuma versão do FIRE BLAZE Mult foi publicada.');
   const version=String(latest.version).replace(/^v/i,'');
   const exe=installedExe(version);
-  if(fs.existsSync(exe))return {installed:true,path:exe,version};
+  if(fs.existsSync(exe)){hideInternalTree();return {installed:true,path:exe,version};}
   if(!latest.download_url)throw new Error('O pacote do FIRE BLAZE Mult ainda não foi publicado no servidor.');
 
   const tempRoot=path.join(app.getPath('temp'),'FIRE-BLAZE-Install');
@@ -191,6 +200,7 @@ async function ensureInstalled(acc){
 
   fs.rmSync(target,{recursive:true,force:true});
   fs.mkdirSync(target,{recursive:true});
+  hideInternalTree();
   win?.webContents.send('fb:install-progress',{stage:'install',progress:0});
   execFileSync('powershell.exe',[
     '-NoProfile','-NonInteractive','-ExecutionPolicy','Bypass','-Command',
@@ -208,6 +218,8 @@ async function ensureInstalled(acc){
   if(!fs.existsSync(found))throw new Error('O pacote foi baixado, mas o executável FIRE BLAZE Mult.exe não foi encontrado.');
   fs.writeFileSync(path.join(target,'.fireblaze-installed'),new Date().toISOString());
   fs.rmSync(zip,{force:true});
+  try{fs.rmSync(tempRoot,{recursive:true,force:true});}catch{}
+  hideInternalTree();
   createDesktopShortcut();
   win?.webContents.send('fb:install-progress',{stage:'done',progress:100});
   return {installed:true,path:found,version};
@@ -248,7 +260,7 @@ ipcMain.handle('fb:launcher-update',async()=>runLauncherUpdate());
 if(!app.requestSingleInstanceLock())app.quit();
 else{
   app.on('second-instance',()=>{if(win){if(win.isMinimized())win.restore();win.show();win.focus();}});
-  app.whenReady().then(()=>{app.setAppUserModelId('FIREBLAZE.Launcher');loadAuth();createDesktopShortcut();createWindow();});
+  app.whenReady().then(()=>{app.setAppUserModelId('FIREBLAZE.Launcher');loadAuth();hideInternalTree();createDesktopShortcut();createWindow();});
   app.on('activate',()=>{if(BrowserWindow.getAllWindows().length===0)createWindow();});
   app.on('window-all-closed',()=>{if(process.platform!=='darwin')app.quit();});
 }
