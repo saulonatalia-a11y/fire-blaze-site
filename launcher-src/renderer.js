@@ -55,7 +55,10 @@ setInterval(async()=>{try{const a=await fireBlaze.refresh();const s=await fireBl
 load();
 $('launcher-update')?.addEventListener('click',async e=>{const b=e.currentTarget;b.disabled=true;msg('Baixando atualização do Launcher...');try{await fireBlaze.updateLauncher()}catch(x){msg(x.message||'Erro ao atualizar o Launcher.');b.disabled=false}});
 fireBlaze.onLauncherUpdateProgress?.(p=>{
-  const t=p?.stage==='install'?'Instalando atualização...':'Baixando atualização... '+(p?.progress||0)+'%';
+  let t='';
+  if(p?.stage==='install')t='Instalando atualização...';
+  else if(p?.stage==='error')t='Erro ao atualizar: '+(p?.error||'falha desconhecida');
+  else t='Baixando atualização... '+(p?.progress||0)+'%';
   msg(t);
   const out=$('mandatory-update-msg'); if(out)out.textContent=t;
 });
