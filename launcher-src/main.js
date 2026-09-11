@@ -39,9 +39,11 @@ async function runLauncherUpdate(url){
   await downloadFile(updateUrl,dest,p=>win?.webContents.send('fb:launcher-update-progress',{stage:'download',progress:p}));
   if(!fs.existsSync(dest) || fs.statSync(dest).size < 1024*1024)throw new Error('O instalador da atualização não foi baixado corretamente.');
   win?.webContents.send('fb:launcher-update-progress',{stage:'install',progress:100});
-  const script = "Start-Sleep -Milliseconds 900; Start-Process -FilePath '"+dest.replace(/'/g,"''")+"' -ArgumentList '/S' -Wait";
-  spawn('powershell.exe',['-NoProfile','-NonInteractive','-ExecutionPolicy','Bypass','-Command',script],{detached:true,stdio:'ignore',windowsHide:true}).unref();
-  setTimeout(()=>app.quit(),250);
+  const currentExe=process.execPath;
+  const script = "$ErrorActionPreference='Stop'; Start-Sleep -Seconds 2; $p=Start-Process -FilePath '"+dest.replace(/'/g,"''")+"' -ArgumentList '/S' -PassThru; $p.WaitForExit(); Start-Sleep -Seconds 1; if(Test-Path '"+currentExe.replace(/'/g,"''")+"'){ Start-Process -FilePath '"+currentExe.replace(/'/g,"''")+"' }";
+  const child=spawn('powershell.exe',['-NoProfile','-ExecutionPolicy','Bypass','-Command',script],{detached:true,stdio:'ignore',windowsHide:true});
+  child.unref();
+  setTimeout(()=>app.exit(0),700);
   return {ok:true};
 }
 function versionParts(v){ return String(v||'0').replace(/^v/i,'').split('.').map(x=>Number(x)||0); }
