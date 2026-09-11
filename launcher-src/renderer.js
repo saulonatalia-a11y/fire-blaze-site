@@ -9,12 +9,16 @@ function renderAccount(a,installedVersion,launcherUpdate){
   const lub=$('launcher-update-box'),lubtn=$('launcher-update');
   if(lub){
     if(launcherUpdate?.available){
-      lub.hidden=false;
-      $('launcher-update-text').textContent='ATUALIZAÇÃO OBRIGATÓRIA: v'+launcherUpdate.latest;
-      lubtn.dataset.url=launcherUpdate.url;
+      lub.hidden=true;
+      const modal=$('mandatory-update-modal'),mb=$('mandatory-update-btn'),mt=$('mandatory-update-title');
+      if(modal){modal.hidden=false;modal.style.display='grid'}
+      if(mt)mt.textContent='Atualizar Launcher para v'+launcherUpdate.latest;
+      if(mb)mb.dataset.url=launcherUpdate.url;
       const launchBtn=$('launch'); if(launchBtn) launchBtn.disabled=true;
+    } else {
+      lub.hidden=true;
+      const modal=$('mandatory-update-modal'); if(modal){modal.hidden=true;modal.style.display='none'}
     }
-    else lub.hidden=true;
   }
   $('hello').textContent='Olá, '+(a.profile?.name||'Cliente');$('email-line').textContent=a.profile?.email||'';
   $('installed-version').textContent=installedVersion?'Instalada: v'+installedVersion:'Multi ainda não instalado';
@@ -39,3 +43,17 @@ setInterval(async()=>{try{const a=await fireBlaze.refresh();const s=await fireBl
 load();
 $('launcher-update')?.addEventListener('click',async e=>{const b=e.currentTarget;b.disabled=true;msg('Baixando atualização do Launcher...');try{await fireBlaze.updateLauncher(b.dataset.url)}catch(x){msg(x.message||'Erro ao atualizar o Launcher.');b.disabled=false}});
 fireBlaze.onLauncherUpdateProgress?.(p=>msg('Atualizando FIRE BLAZE Launcher... '+(p.progress||0)+'%'));
+
+$('mandatory-update-btn')?.addEventListener('click',async e=>{
+  const b=e.currentTarget;
+  const out=$('mandatory-update-msg');
+  b.disabled=true;
+  if(out)out.textContent='Baixando atualização...';
+  try{
+    await fireBlaze.updateLauncher(b.dataset.url);
+    if(out)out.textContent='Instalando atualização...';
+  }catch(x){
+    if(out)out.textContent=x.message||'Erro ao atualizar o Launcher.';
+    b.disabled=false;
+  }
+});
