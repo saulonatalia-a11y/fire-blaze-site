@@ -89,7 +89,7 @@ async function load(tab){
       else if(s?.status==='expired'||(end&&end<=now)) status='<span class="badge off">EXPIRADA</span>';
       else if(s?.status==='pending'||s?.status==='past_due') status='<span class="badge off">AGUARDANDO PAGAMENTO</span>';
       const vence=s?.current_period_end?new Date(s.current_period_end).toLocaleString('pt-BR'):'—';
-      const remainingDays=s?.current_period_end?Math.max(0,Math.ceil((new Date(s.current_period_end).getTime()-now)/86400000)):0;
+      const remainingDays=s?.current_period_end?Math.max(0,Math.round((new Date(s.current_period_end).getTime()-now)/86400000)):0;
       const controls=x.role==='admin'
         ? '<span class="muted">Conta administrativa</span>'
         : '<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">'+
