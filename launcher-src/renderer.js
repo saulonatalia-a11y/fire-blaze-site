@@ -42,7 +42,11 @@ fireBlaze.onInstallProgress(p=>{ if(p.stage==='download')msg('Baixando FIRE BLAZ
 setInterval(async()=>{try{const a=await fireBlaze.refresh();const s=await fireBlaze.state();renderAccount({logged:true,...a},s.installed_version,s.launcher_update)}catch{}},30000);
 load();
 $('launcher-update')?.addEventListener('click',async e=>{const b=e.currentTarget;b.disabled=true;msg('Baixando atualização do Launcher...');try{await fireBlaze.updateLauncher(b.dataset.url)}catch(x){msg(x.message||'Erro ao atualizar o Launcher.');b.disabled=false}});
-fireBlaze.onLauncherUpdateProgress?.(p=>msg('Atualizando FIRE BLAZE Launcher... '+(p.progress||0)+'%'));
+fireBlaze.onLauncherUpdateProgress?.(p=>{
+  const t=p?.stage==='install'?'Instalando atualização...':'Baixando atualização... '+(p?.progress||0)+'%';
+  msg(t);
+  const out=$('mandatory-update-msg'); if(out)out.textContent=t;
+});
 
 $('mandatory-update-btn')?.addEventListener('click',async e=>{
   const b=e.currentTarget;
