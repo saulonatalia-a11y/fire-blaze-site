@@ -10,7 +10,7 @@ const SUPABASE_KEY='sb_publishable_XMv1L9yIinwd1KuMMa-lUQ_Yj2HZ4qc';
 const LICENSE_URL=SUPABASE_URL+'/functions/v1/fire-blaze-license';
 const CHECKOUT_URL=SUPABASE_URL+'/functions/v1/fire-blaze-checkout';
 const CUSTOMER_URL='https://fire-blaze-site.onrender.com/cliente.html';
-const LAUNCHER_RELEASE_API='https://api.github.com/repos/saulonatalia-a11y/fire-blaze-site/releases/latest';
+const LAUNCHER_RELEASE_API='https://api.github.com/repos/saulonatalia-a11y/fire-blaze-site/releases?per_page=20';
 const LAUNCHER_VERSION=app.getVersion();
 let win=null;
 let auth=null;
@@ -23,14 +23,16 @@ async function launcherUpdate(){
   try{
     const r=await fetch(LAUNCHER_RELEASE_API,{headers:{'accept':'application/vnd.github+json','user-agent':'FIRE-BLAZE-Launcher'}});
     if(!r.ok)return {available:false,current:LAUNCHER_VERSION};
-    const rel=await r.json();
+    const releases=await r.json();
+    const rel=(Array.isArray(releases)?releases:[]).find(x=>/^launcher-v/i.test(String(x.tag_name||'')) && !x.draft && !x.prerelease);
+    if(!rel)return {available:false,current:LAUNCHER_VERSION};
     const latest=String(rel.tag_name||'').replace(/^launcher-v/i,'');
     const asset=(rel.assets||[]).find(a=>/FIRE-BLAZE-Launcher-Setup.*\.exe$/i.test(a.name));
     return {available:!!asset&&compareVersions(latest,LAUNCHER_VERSION)>0,current:LAUNCHER_VERSION,latest,url:asset?.browser_download_url||''};
   }catch{return {available:false,current:LAUNCHER_VERSION};}
 }
 async function runLauncherUpdate(url){
-  if(!/^https:\/\/github\.com\//i.test(String(url||'')))throw new Error('Atualização inválida.');
+  if(!/^https:\/\/(github\.com|objects\.githubusercontent\.com|release-assets\.githubusercontent\.com)\//i.test(String(url||'')))throw new Error('Atualização inválida.');
   const dest=path.join(app.getPath('temp'),'FIRE-BLAZE-Launcher-Update.exe');
   await downloadFile(url,dest,p=>win?.webContents.send('fb:launcher-update-progress',{progress:p}));
   spawn(dest,['/S'],{detached:true,stdio:'ignore',windowsHide:false}).unref();
