@@ -6,27 +6,39 @@ function showPanel(){ $('login-card').hidden=true;$('panel').hidden=false }
 function msg(t){$('panel-msg').textContent=t||''}
 function renderAccount(a,installedVersion,launcherUpdate){
   current=a;if(!a?.logged){showLogin();return}showPanel();
-  const lub=$('launcher-update-box'),lubtn=$('launcher-update');
-  // Nunca mostramos atualização como cartão dentro do painel.
-  // Quando existir versão nova, somente o modal central obrigatório aparece.
-  if(lub) lub.hidden=true;
-  {
-    if(launcherUpdate?.available){
-      const modal=$('mandatory-update-modal'),mb=$('mandatory-update-btn'),mt=$('mandatory-update-title');
-      if(modal){modal.hidden=false;modal.style.display='grid'}
-      if(mt)mt.textContent='Atualizar Launcher para v'+launcherUpdate.latest;
-      if(mb)mb.dataset.url=launcherUpdate.url;
-      const launchBtn=$('launch'); if(launchBtn) launchBtn.disabled=true;
-    } else {
-      lub.hidden=true;
-      const modal=$('mandatory-update-modal'); if(modal){modal.style.display='none';modal.hidden=true}
-    }
+  const modal=$('mandatory-update-modal'),mb=$('mandatory-update-btn'),mt=$('mandatory-update-title');
+  if(launcherUpdate?.available){
+    if(modal)modal.style.display='grid';
+    if(mt)mt.textContent='Atualizar Launcher para v'+launcherUpdate.latest;
+    const launchBtn=$('launch'); if(launchBtn)launchBtn.disabled=true;
+  }else{
+    if(modal)modal.style.display='none';
   }
   $('hello').textContent='Olá, '+(a.profile?.name||'Cliente');$('email-line').textContent=a.profile?.email||'';
   $('installed-version').textContent=installedVersion?'Instalada: v'+installedVersion:'Multi ainda não instalado';
   const st=$('status'),warn=$('warn'),renew=$('renew-box'),launch=$('launch');
-  if(a.active){st.textContent='● ATIVA';st.className='status '+(a.warning?'warning':'active');$('days').textContent=(a.days_remaining??0)+' dias';$('expires').textContent='Vence em '+fmtDate(a.subscription?.current_period_end);renew.hidden=!(Number(a.days_remaining)>=0 && Number(a.days_remaining)<=3);launch.disabled=!!launcherUpdate?.available;if(a.warning){warn.hidden=false;warn.textContent='⚠ Sua assinatura termina em '+a.days_remaining+' dia'+(a.days_remaining===1?'':'s')+'. Renove para não interromper o acesso.'}else warn.hidden=true}
-  else{st.textContent='● EXPIRADA / INATIVA';st.className='status expired';$('days').textContent='0 dias';$('expires').textContent='Renove para voltar a usar o Multi.';warn.hidden=false;warn.textContent='🔴 O acesso ao FIRE BLAZE Mult está bloqueado até a renovação.';renew.hidden=false;launch.disabled=true}
+  if(a.active){
+    const days=Number(a.days_remaining??0);
+    st.textContent='● ATIVA';
+    st.className='status '+(a.warning?'warning':'active');
+    $('days').textContent=days+' dias';
+    $('expires').textContent='Vence em '+fmtDate(a.subscription?.current_period_end);
+    renew.style.display=(days<=3?'flex':'none');
+    launch.disabled=!!launcherUpdate?.available;
+    if(a.warning){
+      warn.hidden=false;
+      warn.textContent='⚠ Sua assinatura termina em '+days+' dia'+(days===1?'':'s')+'. Renove para não interromper o acesso.';
+    }else warn.hidden=true;
+  }else{
+    st.textContent='● EXPIRADA / INATIVA';
+    st.className='status expired';
+    $('days').textContent='0 dias';
+    $('expires').textContent='Renove para voltar a usar o Multi.';
+    warn.hidden=false;
+    warn.textContent='🔴 O acesso ao FIRE BLAZE Mult está bloqueado até a renovação.';
+    renew.style.display='flex';
+    launch.disabled=true;
+  }
   const latest=a.latest_version;const update=$('update'),us=$('update-state'),cl=$('changelog');update.hidden=true;cl.textContent='';
   if(latest){
     if(!installedVersion)us.textContent='Disponível: v'+latest.version;
@@ -53,7 +65,6 @@ document.querySelectorAll('[data-renew]').forEach(b=>b.onclick=async()=>{msg('Ab
 fireBlaze.onInstallProgress(p=>{ if(p.stage==='download')msg('Baixando FIRE BLAZE Mult... '+(p.progress||0)+'%'); else if(p.stage==='install')msg('Instalando FIRE BLAZE Mult...'); else if(p.stage==='done')msg('Instalação concluída. Abrindo...'); });
 setInterval(async()=>{try{const a=await fireBlaze.refresh();const s=await fireBlaze.state();renderAccount({logged:true,...a},s.installed_version,s.launcher_update)}catch{}},30000);
 load();
-$('launcher-update')?.addEventListener('click',async e=>{const b=e.currentTarget;b.disabled=true;msg('Baixando atualização do Launcher...');try{await fireBlaze.updateLauncher()}catch(x){msg(x.message||'Erro ao atualizar o Launcher.');b.disabled=false}});
 fireBlaze.onLauncherUpdateProgress?.(p=>{
   let t='';
   if(p?.stage==='install')t='Instalando atualização...';
