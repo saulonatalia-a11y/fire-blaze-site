@@ -53,7 +53,7 @@ document.querySelectorAll('[data-renew]').forEach(b=>b.onclick=async()=>{msg('Ab
 fireBlaze.onInstallProgress(p=>{ if(p.stage==='download')msg('Baixando FIRE BLAZE Mult... '+(p.progress||0)+'%'); else if(p.stage==='install')msg('Instalando FIRE BLAZE Mult...'); else if(p.stage==='done')msg('Instalação concluída. Abrindo...'); });
 setInterval(async()=>{try{const a=await fireBlaze.refresh();const s=await fireBlaze.state();renderAccount({logged:true,...a},s.installed_version,s.launcher_update)}catch{}},30000);
 load();
-$('launcher-update')?.addEventListener('click',async e=>{const b=e.currentTarget;b.disabled=true;msg('Baixando atualização do Launcher...');try{await fireBlaze.updateLauncher(b.dataset.url)}catch(x){msg(x.message||'Erro ao atualizar o Launcher.');b.disabled=false}});
+$('launcher-update')?.addEventListener('click',async e=>{const b=e.currentTarget;b.disabled=true;msg('Baixando atualização do Launcher...');try{await fireBlaze.updateLauncher()}catch(x){msg(x.message||'Erro ao atualizar o Launcher.');b.disabled=false}});
 fireBlaze.onLauncherUpdateProgress?.(p=>{
   const t=p?.stage==='install'?'Instalando atualização...':'Baixando atualização... '+(p?.progress||0)+'%';
   msg(t);
@@ -66,7 +66,7 @@ $('mandatory-update-btn')?.addEventListener('click',async e=>{
   b.disabled=true;
   if(out)out.textContent='Baixando atualização...';
   try{
-    await fireBlaze.updateLauncher(b.dataset.url);
+    await fireBlaze.updateLauncher();
     if(out)out.textContent='Instalando atualização...';
   }catch(x){
     if(out)out.textContent=x.message||'Erro ao atualizar o Launcher.';
