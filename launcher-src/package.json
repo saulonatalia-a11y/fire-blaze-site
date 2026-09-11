@@ -1,0 +1,42 @@
+{
+  "name": "fire-blaze-launcher",
+  "version": "1.0.0",
+  "private": true,
+  "productName": "FIRE BLAZE Launcher",
+  "main": "main.js",
+  "type": "commonjs",
+  "scripts": {
+    "dist": "electron-builder --win nsis"
+  },
+  "devDependencies": {
+    "electron": "^39.0.0",
+    "electron-builder": "^26.0.12"
+  },
+  "build": {
+    "appId": "com.fireblaze.launcher",
+    "productName": "FIRE BLAZE Launcher",
+    "asar": true,
+    "files": [
+      "main.js",
+      "preload.js",
+      "renderer.js",
+      "index.html",
+      "style.css",
+      "fire.ico"
+    ],
+    "win": {
+      "target": ["nsis"],
+      "icon": "fire.ico",
+      "artifactName": "FIRE-BLAZE-Launcher-Setup-v${version}.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": false,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "FIRE BLAZE Launcher",
+      "installerIcon": "fire.ico",
+      "uninstallerIcon": "fire.ico"
+    }
+  }
+}
