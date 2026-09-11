@@ -19,7 +19,7 @@ function renderAccount(a,installedVersion,launcherUpdate){
       const launchBtn=$('launch'); if(launchBtn) launchBtn.disabled=true;
     } else {
       lub.hidden=true;
-      const modal=$('mandatory-update-modal'); if(modal){modal.hidden=true;modal.style.display='none'}
+      const modal=$('mandatory-update-modal'); if(modal){modal.style.display='none';modal.hidden=true}
     }
   }
   $('hello').textContent='Olá, '+(a.profile?.name||'Cliente');$('email-line').textContent=a.profile?.email||'';
