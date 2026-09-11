@@ -78,11 +78,49 @@ async function load(tab){
   }
   if(tab==='clientes'){
     const d=await api('admin_users');
-    const rows=(d.users||[]).map(x=>'<tr><td><b>'+h(x.name||'Sem nome')+'</b></td><td>'+h(x.email)+'</td><td>'+h(x.whatsapp||'—')+'</td><td>'+(x.whatsapp_opt_in?'<span class="badge ok">Aceitou</span>':'<span class="badge off">Não</span>')+'</td><td><span class="badge '+(x.role==='admin'?'admin':'ok')+'">'+h(x.role)+'</span></td></tr>').join('');
-    content.innerHTML='<div class="toolbar"><div><h2>Clientes</h2><div class="muted">Cadastros, WhatsApp e permissões.</div></div></div><div class="admin-table-wrap"><table class="admin-table"><thead><tr><th>Nome</th><th>Email</th><th>WhatsApp</th><th>WhatsApp opt-in</th><th>Perfil</th></tr></thead><tbody>'+(rows||'<tr><td colspan="5"><div class="empty">Nenhum cliente cadastrado.</div></td></tr>')+'</tbody></table></div>';
+    const now=Date.now();
+    const rows=(d.users||[]).map(x=>{
+      const s=x.subscription;
+      const end=s?.current_period_end?new Date(s.current_period_end).getTime():0;
+      const active=!x.is_blocked && s?.status==='active' && (!end||end>now);
+      let status='<span class="badge off">AGUARDANDO PAGAMENTO</span>';
+      if(x.is_blocked) status='<span class="badge off">DESATIVADA</span>';
+      else if(active) status='<span class="badge ok">ATIVA</span>';
+      else if(s?.status==='expired'||(end&&end<=now)) status='<span class="badge off">EXPIRADA</span>';
+      else if(s?.status==='pending'||s?.status==='past_due') status='<span class="badge off">AGUARDANDO PAGAMENTO</span>';
+      const vence=s?.current_period_end?new Date(s.current_period_end).toLocaleString('pt-BR'):'—';
+      const controls=x.role==='admin'
+        ? '<span class="muted">Conta administrativa</span>'
+        : '<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">'+
+          '<input id="dur-'+x.id+'" type="number" min="1" value="30" style="width:72px;background:#0c1118;color:#fff;border:1px solid #2a3542;border-radius:8px;padding:8px">'+
+          '<select id="unit-'+x.id+'" style="background:#0c1118;color:#fff;border:1px solid #2a3542;border-radius:8px;padding:8px">'+
+          '<option value="hours">Horas</option><option value="days" selected>Dias</option><option value="months">Meses</option><option value="years">Anos</option></select>'+
+          '<button class="btn btn-fire" onclick="activateUser(\''+x.id+'\')">Ativar</button>'+
+          '<button class="btn btn-ghost" onclick="deactivateUser(\''+x.id+'\')">Desativar</button>'+
+          '<button class="btn btn-ghost" style="border-color:#6b2525;color:#ff8585" onclick="deleteUser(\''+x.id+'\',\''+h(x.email)+'\')">Excluir</button>'+
+          '</div>';
+      return '<tr><td><b>'+h(x.name||'Sem nome')+'</b><div class="muted">'+status+'</div></td>'+
+        '<td>'+h(x.email)+'</td><td>'+h(x.whatsapp||'—')+'</td>'+
+        '<td>'+h(vence)+'</td><td>'+controls+'</td></tr>';
+    }).join('');
+    content.innerHTML='<div class="toolbar"><div><h2>Clientes</h2><div class="muted">Contas aguardando pagamento, ativas, desativadas e controle manual de acesso.</div></div></div>'+
+      '<div class="admin-table-wrap"><table class="admin-table" style="min-width:1050px"><thead><tr><th>Cliente / Status</th><th>Email</th><th>WhatsApp</th><th>Acesso até</th><th>Ações administrativas</th></tr></thead><tbody>'+
+      (rows||'<tr><td colspan="5"><div class="empty">Nenhum cliente cadastrado.</div></td></tr>')+'</tbody></table></div>';
   }
   if(tab==='assinaturas'){
-    content.innerHTML='<div class="toolbar"><div><h2>Assinaturas</h2><div class="muted">Ativas, vencidas, bloqueadas e renovações.</div></div></div><div class="panel-card"><div class="empty">A tela está preparada. Os dados aparecerão quando começarmos a ativar assinaturas pelo pagamento.</div></div>';
+    const d=await api('admin_users');
+    const now=Date.now();
+    const rows=(d.users||[]).filter(x=>x.role!=='admin').map(x=>{
+      const s=x.subscription,end=s?.current_period_end?new Date(s.current_period_end).getTime():0;
+      let label='AGUARDANDO PAGAMENTO',cls='off';
+      if(x.is_blocked||s?.status==='blocked'){label='DESATIVADA';cls='off'}
+      else if(s?.status==='active'&&(!end||end>now)){label='ATIVA';cls='ok'}
+      else if(s?.status==='expired'||(end&&end<=now)){label='EXPIRADA';cls='off'}
+      return '<tr><td><b>'+h(x.name||'Sem nome')+'</b></td><td>'+h(x.email)+'</td><td><span class="badge '+cls+'">'+label+'</span></td><td>'+(s?.current_period_end?new Date(s.current_period_end).toLocaleString('pt-BR'):'—')+'</td></tr>';
+    }).join('');
+    content.innerHTML='<div class="toolbar"><div><h2>Assinaturas</h2><div class="muted">Visão rápida de quem está aguardando pagamento, ativo, expirado ou desativado.</div></div></div>'+
+      '<div class="admin-table-wrap"><table class="admin-table"><thead><tr><th>Cliente</th><th>Email</th><th>Status</th><th>Acesso até</th></tr></thead><tbody>'+
+      (rows||'<tr><td colspan="4"><div class="empty">Nenhum cliente cadastrado.</div></td></tr>')+'</tbody></table></div>';
   }
   if(tab==='planos'){
     const d=await api('admin_plans');
@@ -116,3 +154,20 @@ window.saveSettings=async()=>{const d=await api('admin_settings_save',{method:'P
   const adm=await verifyAdmin();
   if(adm){showShell(session.user.email);load('dash')} else {await sb.auth.signOut()}
 })();
+window.activateUser=async(id)=>{
+  const value=Number(document.getElementById('dur-'+id)?.value||0);
+  const unit=document.getElementById('unit-'+id)?.value||'days';
+  if(!Number.isFinite(value)||value<=0){toast('Informe um tempo válido.');return}
+  const d=await api('admin_user_activate',{method:'POST',body:JSON.stringify({user_id:id,duration_value:value,duration_unit:unit})});
+  if(d.ok){toast('Conta ativada manualmente.');load('clientes')}else toast(d.error||'Erro ao ativar');
+};
+window.deactivateUser=async(id)=>{
+  if(!confirm('Desativar esta conta? O acesso ao FIRE BLAZE será bloqueado, mas os dados serão preservados.'))return;
+  const d=await api('admin_user_deactivate',{method:'POST',body:JSON.stringify({user_id:id})});
+  if(d.ok){toast('Conta desativada.');load('clientes')}else toast(d.error||'Erro ao desativar');
+};
+window.deleteUser=async(id,email)=>{
+  if(!confirm('EXCLUIR DEFINITIVAMENTE o cadastro '+email+'?\n\nIsso remove conta, assinatura, pagamentos vinculados, dispositivos e login. Esta ação não pode ser desfeita.'))return;
+  const d=await api('admin_user_delete',{method:'POST',body:JSON.stringify({user_id:id})});
+  if(d.ok){toast('Cadastro excluído.');load('clientes')}else toast(d.error||'Erro ao excluir');
+};
