@@ -97,6 +97,7 @@ async function load(tab){
           '<option value="hours">Horas</option><option value="days" selected>Dias</option><option value="months">Meses</option><option value="years">Anos</option></select>'+
           '<button class="btn btn-fire" onclick="activateUser(\''+x.id+'\')">Ativar</button>'+
           '<button class="btn btn-ghost" onclick="deactivateUser(\''+x.id+'\')">Desativar</button>'+
+          '<button class="btn btn-ghost" onclick="resetDevice(\''+x.id+'\',\''+h(x.email)+'\')">Liberar novo PC</button>'+
           '<button class="btn btn-ghost" style="border-color:#6b2525;color:#ff8585" onclick="deleteUser(\''+x.id+'\',\''+h(x.email)+'\')">Excluir</button>'+
           '</div>';
       return '<tr><td><b>'+h(x.name||'Sem nome')+'</b><div class="muted">'+status+'</div></td>'+
@@ -170,4 +171,10 @@ window.deleteUser=async(id,email)=>{
   if(!confirm('EXCLUIR DEFINITIVAMENTE o cadastro '+email+'?\n\nIsso remove conta, assinatura, pagamentos vinculados, dispositivos e login. Esta ação não pode ser desfeita.'))return;
   const d=await api('admin_user_delete',{method:'POST',body:JSON.stringify({user_id:id})});
   if(d.ok){toast('Cadastro excluído.');load('clientes')}else toast(d.error||'Erro ao excluir');
+};
+
+window.resetDevice=async(id,email)=>{
+  if(!confirm('Liberar a conta '+email+' para vincular em um novo PC?\n\nO PC antigo será revogado. Na próxima abertura do Launcher, o novo computador será vinculado automaticamente.'))return;
+  const d=await api('admin_user_reset_device',{method:'POST',body:JSON.stringify({user_id:id})});
+  if(d.ok){toast('Novo PC liberado para esta conta.');load('clientes')}else toast(d.error||'Erro ao liberar novo PC');
 };
