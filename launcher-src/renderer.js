@@ -1,4 +1,4 @@
-const $=id=>document.getElementById(id);let current=null;
+const $=id=>document.getElementById(id);let current=null;let installedVersionCache='';let launcherUpdateCache={available:false};
 function fmtDate(v){if(!v)return '—';const d=new Date(v);return isNaN(d)?'—':d.toLocaleDateString('pt-BR')}
 function compare(a,b){const A=String(a||'0').replace(/^v/i,'').split('.').map(Number),B=String(b||'0').replace(/^v/i,'').split('.').map(Number);for(let i=0;i<Math.max(A.length,B.length);i++){const d=(A[i]||0)-(B[i]||0);if(d)return d}return 0}
 function showLogin(){ $('login-card').hidden=false;$('panel').hidden=true }
@@ -21,7 +21,7 @@ function renderAccount(a,installedVersion,launcherUpdate){
     const days=Number(a.days_remaining??0);
     st.textContent='● ATIVA';
     st.className='status '+(a.warning?'warning':'active');
-    $('days').textContent=days+' dias';
+    $('days').textContent=days+' '+(days===1?'dia':'dias');
     $('expires').textContent='Vence em '+fmtDate(a.subscription?.current_period_end);
     renew.style.display=(days<=3?'flex':'none');
     launch.disabled=!!launcherUpdate?.available;
@@ -49,21 +49,17 @@ function renderAccount(a,installedVersion,launcherUpdate){
 }
 async function load(){try{
   const s=await fireBlaze.state();
+  installedVersionCache=s.installed_version||'';
+  launcherUpdateCache=s.launcher_update||{available:false};
   $('device').textContent=s.device_name||'';
-  // Atualização do Launcher vem antes de qualquer tela: bloqueia tudo até atualizar.
-  if(s.launcher_update?.available){
-    renderAccount(s.account,s.installed_version,s.launcher_update);
-    return;
-  }
-  // Se já existe sessão salva, entra direto no painel sem pedir login novamente.
-  renderAccount(s.account,s.installed_version,s.launcher_update);
+  renderAccount(s.account,installedVersionCache,launcherUpdateCache);
 }catch(e){$('login-msg').textContent=e.message||'Erro ao carregar.'}}
-$('login').onclick=async()=>{const b=$('login');b.disabled=true;$('login-msg').textContent='Entrando...';try{await fireBlaze.login($('email').value.trim(),$('password').value);$('password').value='';$('login-msg').textContent='';const s=await fireBlaze.state();renderAccount(s.account,s.installed_version)}catch(e){$('login-msg').textContent=e.message||'Não foi possível entrar.'}finally{b.disabled=false}};
+$('login').onclick=async()=>{const b=$('login');b.disabled=true;$('login-msg').textContent='Entrando...';try{await fireBlaze.login($('email').value.trim(),$('password').value);$('password').value='';$('login-msg').textContent='';const s=await fireBlaze.state();installedVersionCache=s.installed_version||'';launcherUpdateCache=s.launcher_update||{available:false};renderAccount(s.account,installedVersionCache,launcherUpdateCache)}catch(e){$('login-msg').textContent=e.message||'Não foi possível entrar.'}finally{b.disabled=false}};
 $('logout').onclick=async()=>{await fireBlaze.logout();showLogin()};
 $('launch').onclick=async()=>{const b=$('launch');b.disabled=true;msg('Validando licença e preparando o Multi...');try{await fireBlaze.launch();msg('FIRE BLAZE Mult aberto.')}catch(e){msg(e.message||'Não foi possível abrir.')}finally{setTimeout(()=>{if(current?.active)b.disabled=false},900)}};
 document.querySelectorAll('[data-renew]').forEach(b=>b.onclick=async()=>{msg('Abrindo checkout seguro...');try{await fireBlaze.renew(b.dataset.renew);msg('Após pagar, volte aqui. O status será atualizado automaticamente.')}catch(e){msg(e.message||'Erro ao abrir pagamento.')}});
 fireBlaze.onInstallProgress(p=>{ if(p.stage==='download')msg('Baixando FIRE BLAZE Mult... '+(p.progress||0)+'%'); else if(p.stage==='install')msg('Instalando FIRE BLAZE Mult...'); else if(p.stage==='done')msg('Instalação concluída. Abrindo...'); });
-setInterval(async()=>{try{const a=await fireBlaze.refresh();const s=await fireBlaze.state();renderAccount({logged:true,...a},s.installed_version,s.launcher_update)}catch{}},30000);
+setInterval(async()=>{try{const a=await fireBlaze.refresh();renderAccount({logged:true,...a},installedVersionCache,launcherUpdateCache)}catch{}},5000);
 load();
 fireBlaze.onLauncherUpdateProgress?.(p=>{
   let t='';
