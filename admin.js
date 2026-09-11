@@ -16,16 +16,26 @@ async function api(name,opt={}){
   return r.json();
 }
 function showShell(email){
-  loginScreen.hidden=true;shell.hidden=false;
+  loginScreen.hidden=true;
+  loginScreen.style.display='none';
+  shell.hidden=false;
+  shell.style.display='grid';
   document.getElementById('admin-user-email').textContent=email||'admin';
 }
 function showLogin(msg=''){
-  shell.hidden=true;loginScreen.hidden=false;
+  shell.hidden=true;
+  shell.style.display='none';
+  loginScreen.hidden=false;
+  loginScreen.style.display='grid';
   document.getElementById('admin-msg').textContent=msg;
 }
 async function verifyAdmin(){
-  const d=await api('admin_dashboard');
-  return d.ok?d:null;
+  try{
+    const d=await api('admin_dashboard');
+    return d&&d.ok?d:null;
+  }catch(e){
+    return null;
+  }
 }
 document.getElementById('admin-login').onclick=async()=>{
   const msg=document.getElementById('admin-msg');
@@ -39,7 +49,11 @@ document.getElementById('admin-login').onclick=async()=>{
   if(!adm){await sb.auth.signOut();msg.textContent='Esta conta não possui permissão de administrador.';return}
   msg.textContent='';
   showShell(data.user.email);
-  await load('dash');
+  try{
+    await load('dash');
+  }catch(e){
+    content.innerHTML='<div class="empty">Erro ao carregar o Dashboard. Clique em Atualizar dados.</div>';
+  }
 };
 document.getElementById('logout').onclick=async()=>{await sb.auth.signOut();showLogin('Sessão encerrada.')};
 document.getElementById('refresh').onclick=()=>load(currentTab);
