@@ -31,9 +31,10 @@ async function launcherUpdate(){
     return {available:!!asset&&compareVersions(latest,LAUNCHER_VERSION)>0,current:LAUNCHER_VERSION,latest,url:asset?.browser_download_url||''};
   }catch{return {available:false,current:LAUNCHER_VERSION};}
 }
-async function runLauncherUpdate(url){
-  const updateUrl=String(url||'').trim();
-  if(!/^https:\/\/(github\.com|objects\.githubusercontent\.com|release-assets\.githubusercontent\.com|api\.github\.com)\//i.test(updateUrl))throw new Error('Atualização inválida.');
+async function runLauncherUpdate(){
+  const info=await launcherUpdate();
+  if(!info?.available || !info?.url)throw new Error('Nenhuma atualização válida foi encontrada.');
+  const updateUrl=String(info.url).trim();
   const dest=path.join(app.getPath('temp'),'FIRE-BLAZE-Launcher-Update-'+Date.now()+'.exe');
   win?.webContents.send('fb:launcher-update-progress',{stage:'download',progress:0});
   await downloadFile(updateUrl,dest,p=>win?.webContents.send('fb:launcher-update-progress',{stage:'download',progress:p}));
@@ -235,7 +236,7 @@ ipcMain.handle('fb:renew',async(_e,method)=>renew(String(method||'')));
 ipcMain.handle('fb:refresh',async()=>account());
 ipcMain.handle('fb:open-update',async(_e,url)=>{if(/^https:\/\//i.test(String(url||'')))await shell.openExternal(String(url));return true;});
 ipcMain.handle('fb:open-customer',async()=>{await shell.openExternal(CUSTOMER_URL);return true;});
-ipcMain.handle('fb:launcher-update',async(_e,url)=>runLauncherUpdate(String(url||'')));
+ipcMain.handle('fb:launcher-update',async()=>runLauncherUpdate());
 
 if(!app.requestSingleInstanceLock())app.quit();
 else{
