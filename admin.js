@@ -89,13 +89,14 @@ async function load(tab){
       else if(s?.status==='expired'||(end&&end<=now)) status='<span class="badge off">EXPIRADA</span>';
       else if(s?.status==='pending'||s?.status==='past_due') status='<span class="badge off">AGUARDANDO PAGAMENTO</span>';
       const vence=s?.current_period_end?new Date(s.current_period_end).toLocaleString('pt-BR'):'—';
+      const remainingDays=s?.current_period_end?Math.max(0,Math.ceil((new Date(s.current_period_end).getTime()-now)/86400000)):0;
       const controls=x.role==='admin'
         ? '<span class="muted">Conta administrativa</span>'
         : '<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">'+
-          '<input id="dur-'+x.id+'" type="number" min="1" value="30" style="width:72px;background:#0c1118;color:#fff;border:1px solid #2a3542;border-radius:8px;padding:8px">'+
+          '<input id="dur-'+x.id+'" type="number" min="0" value="'+remainingDays+'" style="width:72px;background:#0c1118;color:#fff;border:1px solid #2a3542;border-radius:8px;padding:8px">'+
           '<select id="unit-'+x.id+'" style="background:#0c1118;color:#fff;border:1px solid #2a3542;border-radius:8px;padding:8px">'+
           '<option value="hours">Horas</option><option value="days" selected>Dias</option><option value="months">Meses</option><option value="years">Anos</option></select>'+
-          '<button class="btn btn-fire" onclick="activateUser(\''+x.id+'\')">Ativar</button>'+
+          '<button class="btn btn-fire" onclick="saveAccess(\''+x.id+'\')">Salvar</button>'+
           '<button class="btn btn-ghost" onclick="deactivateUser(\''+x.id+'\')">Desativar</button>'+
           '<button class="btn btn-ghost" onclick="resetDevice(\''+x.id+'\',\''+h(x.email)+'\')">Liberar novo PC</button>'+
           '<button class="btn btn-ghost" style="border-color:#6b2525;color:#ff8585" onclick="deleteUser(\''+x.id+'\',\''+h(x.email)+'\')">Excluir</button>'+
@@ -155,13 +156,17 @@ window.saveSettings=async()=>{const d=await api('admin_settings_save',{method:'P
   const adm=await verifyAdmin();
   if(adm){showShell(session.user.email);load('dash')} else {await sb.auth.signOut()}
 })();
-window.activateUser=async(id)=>{
-  const value=Number(document.getElementById('dur-'+id)?.value||0);
+window.saveAccess=async(id)=>{
+  const value=Number(document.getElementById('dur-'+id)?.value);
   const unit=document.getElementById('unit-'+id)?.value||'days';
-  if(!Number.isFinite(value)||value<=0){toast('Informe um tempo válido.');return}
+  if(!Number.isFinite(value)||value<0){toast('Informe um tempo válido (0 ou mais).');return}
   const d=await api('admin_user_activate',{method:'POST',body:JSON.stringify({user_id:id,duration_value:value,duration_unit:unit})});
-  if(d.ok){toast('Conta ativada manualmente.');load('clientes')}else toast(d.error||'Erro ao ativar');
+  if(d.ok){
+    toast(value===0?'Acesso salvo como expirado/bloqueado.':'Tempo de acesso salvo.');
+    load('clientes');
+  }else toast(d.error||'Erro ao salvar');
 };
+window.activateUser=window.saveAccess;
 window.deactivateUser=async(id)=>{
   if(!confirm('Desativar esta conta? O acesso ao FIRE BLAZE será bloqueado, mas os dados serão preservados.'))return;
   const d=await api('admin_user_deactivate',{method:'POST',body:JSON.stringify({user_id:id})});
