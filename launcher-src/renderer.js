@@ -4,8 +4,13 @@ function compare(a,b){const A=String(a||'0').replace(/^v/i,'').split('.').map(Nu
 function showLogin(){ $('login-card').hidden=false;$('panel').hidden=true }
 function showPanel(){ $('login-card').hidden=true;$('panel').hidden=false }
 function msg(t){$('panel-msg').textContent=t||''}
-function renderAccount(a,installedVersion){
+function renderAccount(a,installedVersion,launcherUpdate){
   current=a;if(!a?.logged){showLogin();return}showPanel();
+  const lub=$('launcher-update-box'),lubtn=$('launcher-update');
+  if(lub){
+    if(launcherUpdate?.available){lub.hidden=false;$('launcher-update-text').textContent='Nova versão do Launcher: v'+launcherUpdate.latest;lubtn.dataset.url=launcherUpdate.url}
+    else lub.hidden=true;
+  }
   $('hello').textContent='Olá, '+(a.profile?.name||'Cliente');$('email-line').textContent=a.profile?.email||'';
   $('installed-version').textContent=installedVersion?'Instalada: v'+installedVersion:'Multi ainda não instalado';
   const st=$('status'),warn=$('warn'),renew=$('renew-box'),launch=$('launch');
@@ -19,11 +24,13 @@ function renderAccount(a,installedVersion){
     cl.textContent=(latest.title||'')+(latest.changelog?'\n'+latest.changelog:'');
   }else us.textContent='Nenhuma versão publicada.';
 }
-async function load(){try{const s=await fireBlaze.state();$('device').textContent=s.device_name||'';renderAccount(s.account,s.installed_version)}catch(e){$('login-msg').textContent=e.message||'Erro ao carregar.'}}
+async function load(){try{const s=await fireBlaze.state();$('device').textContent=s.device_name||'';renderAccount(s.account,s.installed_version,s.launcher_update)}catch(e){$('login-msg').textContent=e.message||'Erro ao carregar.'}}
 $('login').onclick=async()=>{const b=$('login');b.disabled=true;$('login-msg').textContent='Entrando...';try{await fireBlaze.login($('email').value.trim(),$('password').value);$('password').value='';$('login-msg').textContent='';const s=await fireBlaze.state();renderAccount(s.account,s.installed_version)}catch(e){$('login-msg').textContent=e.message||'Não foi possível entrar.'}finally{b.disabled=false}};
 $('logout').onclick=async()=>{await fireBlaze.logout();showLogin()};
 $('launch').onclick=async()=>{const b=$('launch');b.disabled=true;msg('Validando licença e preparando o Multi...');try{await fireBlaze.launch();msg('FIRE BLAZE Mult aberto.')}catch(e){msg(e.message||'Não foi possível abrir.')}finally{setTimeout(()=>{if(current?.active)b.disabled=false},900)}};
 document.querySelectorAll('[data-renew]').forEach(b=>b.onclick=async()=>{msg('Abrindo checkout seguro...');try{await fireBlaze.renew(b.dataset.renew);msg('Após pagar, volte aqui. O status será atualizado automaticamente.')}catch(e){msg(e.message||'Erro ao abrir pagamento.')}});
 fireBlaze.onInstallProgress(p=>{ if(p.stage==='download')msg('Baixando FIRE BLAZE Mult... '+(p.progress||0)+'%'); else if(p.stage==='install')msg('Instalando FIRE BLAZE Mult...'); else if(p.stage==='done')msg('Instalação concluída. Abrindo...'); });
-setInterval(async()=>{try{const a=await fireBlaze.refresh();const s=await fireBlaze.state();renderAccount({logged:true,...a},s.installed_version)}catch{}},30000);
+setInterval(async()=>{try{const a=await fireBlaze.refresh();const s=await fireBlaze.state();renderAccount({logged:true,...a},s.installed_version,s.launcher_update)}catch{}},30000);
 load();
+$('launcher-update')?.addEventListener('click',async e=>{const b=e.currentTarget;b.disabled=true;msg('Baixando atualização do Launcher...');try{await fireBlaze.updateLauncher(b.dataset.url)}catch(x){msg(x.message||'Erro ao atualizar o Launcher.');b.disabled=false}});
+fireBlaze.onLauncherUpdateProgress?.(p=>msg('Atualizando FIRE BLAZE Launcher... '+(p.progress||0)+'%'));
