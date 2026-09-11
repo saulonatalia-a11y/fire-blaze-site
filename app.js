@@ -98,6 +98,24 @@ document.getElementById('register-btn').addEventListener('click',async()=>{
   }
 });
 
+
+document.getElementById('forgot-password')?.addEventListener('click',async e=>{
+  e.preventDefault();
+  const msg=document.getElementById('login-msg');
+  const email=document.getElementById('login-email').value.trim();
+  if(!email){
+    msg.textContent='Digite seu email acima para redefinir a senha.';
+    return;
+  }
+  msg.textContent='Enviando link para redefinir sua senha...';
+  const {error}=await sbClient.auth.resetPasswordForEmail(email,{
+    redirectTo:location.origin+'/cliente.html?reset-password=1'
+  });
+  msg.textContent=error
+    ? 'Não foi possível enviar o email: '+error.message
+    : 'Pronto. Enviamos o link de redefinição para seu email. Verifique também Spam e Promoções.';
+});
+
 document.getElementById('login-btn').addEventListener('click',async()=>{
   const msg=document.getElementById('login-msg');
   msg.textContent='Entrando...';
