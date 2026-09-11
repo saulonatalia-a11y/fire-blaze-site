@@ -146,18 +146,12 @@ function installedVersionFromDisk(){
     return versions[0]||'';
   }catch{return '';}
 }
-function createDesktopShortcut(){
-  if(process.platform!=='win32')return false;
+function removeLegacyMultiDesktopShortcut(){
+  if(process.platform!=='win32')return;
   try{
     const shortcut=path.join(app.getPath('desktop'),'FIRE BLAZE Mult.lnk');
-    return shell.writeShortcutLink(shortcut,'create',{
-      target:process.execPath,
-      cwd:path.dirname(process.execPath),
-      description:'FIRE BLAZE Mult — abrir pelo Launcher',
-      icon:iconPath(), iconIndex:0,
-      appUserModelId:'FIREBLAZE.Launcher'
-    });
-  }catch{return false;}
+    fs.rmSync(shortcut,{force:true});
+  }catch{}
 }
 async function downloadFile(url,dest,onProgress){
   const r=await fetch(url,{redirect:'follow'});
@@ -220,7 +214,7 @@ async function ensureInstalled(acc){
   fs.rmSync(zip,{force:true});
   try{fs.rmSync(tempRoot,{recursive:true,force:true});}catch{}
   hideInternalTree();
-  createDesktopShortcut();
+  removeLegacyMultiDesktopShortcut();
   win?.webContents.send('fb:install-progress',{stage:'done',progress:100});
   return {installed:true,path:found,version};
 }
@@ -233,8 +227,10 @@ async function launchMulti(){
   if(!acc.active)throw new Error('Sua assinatura está inativa. Renove para abrir o Multi.');
   const installed=await ensureInstalled(acc);
   const ticket=await issueTicket();
-  const child=spawn(installed.path,['--fire-blaze-ticket='+ticket.ticket],{cwd:path.dirname(installed.path),detached:true,stdio:'ignore',windowsHide:false});
-  child.unref();
+  const child=spawn(installed.path,['--fire-blaze-ticket='+ticket.ticket],{cwd:path.dirname(installed.path),detached:false,stdio:'ignore',windowsHide:false});
+  if(win && !win.isDestroyed())win.hide();
+  child.once('exit',()=>{ if(win && !win.isDestroyed()){win.show();win.focus();} });
+  child.once('error',()=>{ if(win && !win.isDestroyed()){win.show();win.focus();} });
   return {ok:true};
 }
 async function renew(method){
@@ -248,7 +244,7 @@ function createWindow(){
   win.loadFile('index.html');
 }
 ipcMain.handle('fb:state',async()=>({account:await account(),installed_version:installedVersionFromDisk(),device_name:deviceName(),launcher_update:await launcherUpdate()}));
-ipcMain.handle('fb:login',async(_e,email,password)=>{await login(String(email||'').trim(),String(password||''));createDesktopShortcut();return {ok:true,account:await account()};});
+ipcMain.handle('fb:login',async(_e,email,password)=>{await login(String(email||'').trim(),String(password||''));removeLegacyMultiDesktopShortcut();return {ok:true,account:await account()};});
 ipcMain.handle('fb:logout',async()=>{saveAuth(null);return {ok:true};});
 ipcMain.handle('fb:launch',async()=>launchMulti());
 ipcMain.handle('fb:renew',async(_e,method)=>renew(String(method||'')));
@@ -260,7 +256,7 @@ ipcMain.handle('fb:launcher-update',async()=>runLauncherUpdate());
 if(!app.requestSingleInstanceLock())app.quit();
 else{
   app.on('second-instance',()=>{if(win){if(win.isMinimized())win.restore();win.show();win.focus();}});
-  app.whenReady().then(()=>{app.setAppUserModelId('FIREBLAZE.Launcher');loadAuth();hideInternalTree();createDesktopShortcut();createWindow();});
+  app.whenReady().then(()=>{app.setAppUserModelId('FIREBLAZE.Launcher');loadAuth();hideInternalTree();removeLegacyMultiDesktopShortcut();createWindow();});
   app.on('activate',()=>{if(BrowserWindow.getAllWindows().length===0)createWindow();});
   app.on('window-all-closed',()=>{if(process.platform!=='darwin')app.quit();});
 }
