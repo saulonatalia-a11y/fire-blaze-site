@@ -109,7 +109,7 @@ document.getElementById('forgot-password')?.addEventListener('click',async e=>{
   }
   msg.textContent='Enviando link para redefinir sua senha...';
   const {error}=await sbClient.auth.resetPasswordForEmail(email,{
-    redirectTo:location.origin+'/cliente.html?reset-password=1'
+    redirectTo:location.origin+'/reset.html'
   });
   msg.textContent=error
     ? 'Não foi possível enviar o email: '+error.message
