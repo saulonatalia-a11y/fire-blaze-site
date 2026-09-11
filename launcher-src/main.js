@@ -33,7 +33,7 @@ async function launcherUpdate(){
 }
 async function runLauncherUpdate(url){
   const updateUrl=String(url||'').trim();
-  if(!/^https:\/\/(github\.com|objects\.githubusercontent\.com|release-assets\.githubusercontent\.com)\//i.test(updateUrl))throw new Error('Atualização inválida.');
+  if(!/^https:\/\/(github\.com|objects\.githubusercontent\.com|release-assets\.githubusercontent\.com|api\.github\.com)\//i.test(updateUrl))throw new Error('Atualização inválida.');
   const dest=path.join(app.getPath('temp'),'FIRE-BLAZE-Launcher-Update-'+Date.now()+'.exe');
   win?.webContents.send('fb:launcher-update-progress',{stage:'download',progress:0});
   await downloadFile(updateUrl,dest,p=>win?.webContents.send('fb:launcher-update-progress',{stage:'download',progress:p}));
