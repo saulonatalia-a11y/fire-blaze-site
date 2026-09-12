@@ -96,7 +96,7 @@ window.FIRE_BLAZE_CONFIG={
   supabaseKey:"sb_publishable_XMv1L9yIinwd1KuMMa-lUQ_Yj2HZ4qc",
   apiUrl:"https://fqwoshdohwcbdgbdvmqc.supabase.co/functions/v1/fire-blaze-site",
   checkoutUrl:"https://fqwoshdohwcbdgbdvmqc.supabase.co/functions/v1/fire-blaze-checkout",
-  launcherUrl:"https://github.com/saulonatalia-a11y/fire-blaze-site/releases/download/launcher-v1.0.0/FIRE-BLAZE-Launcher-Setup-v1.0.0.exe"
+  launcherReleasesApi:"https://api.github.com/repos/saulonatalia-a11y/fire-blaze-site/releases?per_page=100"
 };
 </script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -111,6 +111,25 @@ function brl(cents,currency='BRL'){
 function dateBR(v){
   if(!v)return '—';
   const d=new Date(v); return Number.isNaN(d.getTime())?'—':d.toLocaleDateString('pt-BR');
+}
+function versionParts(v){return String(v||'0').replace(/^launcher-v/i,'').replace(/^v/i,'').split('.').map(x=>Number(x)||0)}
+function compareVersions(a,b){
+  const A=versionParts(a),B=versionParts(b);
+  for(let i=0;i<Math.max(A.length,B.length);i++){const d=(A[i]||0)-(B[i]||0);if(d)return d}
+  return 0;
+}
+async function latestLauncher(){
+  const r=await fetch(cfg.launcherReleasesApi,{headers:{'Accept':'application/vnd.github+json'}});
+  if(!r.ok)throw new Error('Não foi possível localizar o Launcher mais recente.');
+  const releases=await r.json();
+  const launchers=(releases||[])
+    .filter(x=>!x.draft&&!x.prerelease&&String(x.tag_name||'').startsWith('launcher-v'))
+    .sort((a,b)=>compareVersions(b.tag_name,a.tag_name));
+  const rel=launchers[0];
+  if(!rel)throw new Error('Nenhuma versão do Launcher foi publicada.');
+  const asset=(rel.assets||[]).find(x=>String(x.name||'').toLowerCase().endsWith('.exe'));
+  if(!asset?.browser_download_url)throw new Error('O instalador do Launcher ainda não está disponível.');
+  return {version:String(rel.tag_name).replace(/^launcher-v/i,''),url:asset.browser_download_url};
 }
 async function api(name){
   const headers={'Content-Type':'application/json'};
@@ -147,12 +166,23 @@ async function loadAccount(){
     pill.className='status-pill active';
     inactive.hidden=true; active.hidden=false;
     document.getElementById('top-msg').textContent='Seu acesso está liberado.';
-    download.href=cfg.launcherUrl;
-    download.removeAttribute('aria-disabled');
-    download.style.pointerEvents='auto';
-    download.style.opacity='1';
-    download.textContent='BAIXAR FIRE BLAZE LAUNCHER';
-    note.textContent='Instale o Launcher e entre com esta mesma conta para abrir o FIRE BLAZE Mult.';
+    download.href='#';
+    download.setAttribute('aria-disabled','true');
+    download.style.pointerEvents='none';
+    download.style.opacity='.65';
+    download.textContent='LOCALIZANDO LAUNCHER MAIS RECENTE...';
+    note.textContent='Buscando automaticamente a versão mais nova do FIRE BLAZE Launcher.';
+    latestLauncher().then(x=>{
+      download.href=x.url;
+      download.removeAttribute('aria-disabled');
+      download.style.pointerEvents='auto';
+      download.style.opacity='1';
+      download.textContent='BAIXAR FIRE BLAZE LAUNCHER v'+x.version;
+      note.textContent='Você sempre baixa o Launcher mais recente. Depois ele instala/atualiza o FIRE BLAZE Mult automaticamente.';
+    }).catch(e=>{
+      download.textContent='LAUNCHER TEMPORARIAMENTE INDISPONÍVEL';
+      note.textContent=e.message||'Não foi possível localizar o instalador.';
+    });
   }else{
     const st=d.subscription?.status||'pending';
     document.getElementById('status').textContent=st==='past_due'?'PAGAMENTO PENDENTE':'AGUARDANDO PAGAMENTO';
