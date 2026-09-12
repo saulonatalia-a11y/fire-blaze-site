@@ -154,7 +154,7 @@ function installedVersionFromDisk(){
     const root=installedRoot();
     if(!fs.existsSync(root))return '';
     const versions=fs.readdirSync(root,{withFileTypes:true})
-      .filter(x=>x.isDirectory() && !!findMultiExe(path.join(root,x.name)))
+      .filter(x=>x.isDirectory() && fs.existsSync(path.join(root,x.name,'.fireblaze-installed')))
       .map(x=>x.name)
       .sort((a,b)=>compareVersions(b,a));
     return versions[0]||'';
@@ -189,13 +189,29 @@ async function ensureInstalled(acc){
   const latest=acc?.latest_version;
   if(!latest?.version)throw new Error('Nenhuma versão do FIRE BLAZE Mult foi publicada.');
   const version=String(latest.version).replace(/^v/i,'');
-  const exe=installedExe(version);
-  if(exe && fs.existsSync(exe)){hideInternalTree();removeLegacyMultiDesktopShortcut();return {installed:true,path:exe,version};}
+  const target=path.join(installedRoot(),version);
+  const marker=path.join(target,'.fireblaze-installed');
+  const pathFile=path.join(target,'.fireblaze-exe');
+
+  if(fs.existsSync(marker) && fs.existsSync(pathFile)){
+    try{
+      const remembered=String(fs.readFileSync(pathFile,'utf8')||'').trim();
+      if(remembered && fs.existsSync(remembered))return {installed:true,path:remembered,version};
+    }catch{}
+  }
+
+  const direct=installedExe(version);
+  if(fs.existsSync(direct)){
+    fs.mkdirSync(target,{recursive:true});
+    fs.writeFileSync(marker,new Date().toISOString());
+    fs.writeFileSync(pathFile,direct);
+    return {installed:true,path:direct,version};
+  }
+
   if(!latest.download_url)throw new Error('O pacote do FIRE BLAZE Mult ainda não foi publicado no servidor.');
 
   const tempRoot=path.join(app.getPath('temp'),'FIRE-BLAZE-Install');
   const zip=path.join(tempRoot,'multi-'+version+'.zip');
-  const target=path.join(installedRoot(),version);
   fs.rmSync(tempRoot,{recursive:true,force:true});
   fs.mkdirSync(tempRoot,{recursive:true});
   win?.webContents.send('fb:install-progress',{stage:'download',progress:0});
@@ -208,20 +224,37 @@ async function ensureInstalled(acc){
 
   fs.rmSync(target,{recursive:true,force:true});
   fs.mkdirSync(target,{recursive:true});
-  hideInternalTree();
   win?.webContents.send('fb:install-progress',{stage:'install',progress:0});
   execFileSync('powershell.exe',[
     '-NoProfile','-NonInteractive','-ExecutionPolicy','Bypass','-Command',
     "Expand-Archive -LiteralPath '"+zip.replace(/'/g,"''")+"' -DestinationPath '"+target.replace(/'/g,"''")+"' -Force"
   ],{windowsHide:true,timeout:180000});
 
-  let found=findMultiExe(target);
-  if(!found || !fs.existsSync(found))throw new Error('O pacote foi baixado, mas o executável FIRE BLAZE Mult.exe não foi encontrado.');
-  fs.writeFileSync(path.join(target,'.fireblaze-installed'),new Date().toISOString());
+  function findExe(dir){
+    const entries=fs.readdirSync(dir,{withFileTypes:true});
+    for(const e of entries){
+      const full=path.join(dir,e.name);
+      if(e.isFile() && e.name.toLowerCase()==='fire blaze mult.exe')return full;
+    }
+    for(const e of entries){
+      if(e.isDirectory()){
+        const found=findExe(path.join(dir,e.name));
+        if(found)return found;
+      }
+    }
+    return '';
+  }
+
+  const found=findExe(target);
+  if(!found)throw new Error('O pacote foi baixado, mas o executável FIRE BLAZE Mult.exe não foi encontrado.');
+
+  fs.writeFileSync(marker,new Date().toISOString());
+  fs.writeFileSync(pathFile,found);
   fs.rmSync(zip,{force:true});
-  try{fs.rmSync(tempRoot,{recursive:true,force:true});}catch{}
-  hideInternalTree();
-  removeLegacyMultiDesktopShortcut();
+  try{
+    execFileSync('attrib',['+H',installedRoot()],{windowsHide:true});
+    execFileSync('attrib',['+H',target],{windowsHide:true});
+  }catch{}
   win?.webContents.send('fb:install-progress',{stage:'done',progress:100});
   return {installed:true,path:found,version};
 }
@@ -234,10 +267,28 @@ async function launchMulti(){
   if(!acc.active)throw new Error('Sua assinatura está inativa. Renove para abrir o Multi.');
   const installed=await ensureInstalled(acc);
   const ticket=await issueTicket();
-  const child=spawn(installed.path,['--fire-blaze-ticket='+ticket.ticket],{cwd:path.dirname(installed.path),detached:false,stdio:'ignore',windowsHide:false});
+
   if(win && !win.isDestroyed())win.hide();
-  child.once('exit',()=>{ if(win && !win.isDestroyed()){win.show();win.focus();} });
-  child.once('error',()=>{ if(win && !win.isDestroyed()){win.show();win.focus();} });
+
+  const child=spawn(installed.path,['--fire-blaze-ticket='+ticket.ticket],{
+    cwd:path.dirname(installed.path),
+    detached:false,
+    stdio:'ignore',
+    windowsHide:false
+  });
+
+  child.on('error',()=>{
+    if(win && !win.isDestroyed()){win.show();win.focus();}
+  });
+
+  child.on('exit',()=>{
+    if(win && !win.isDestroyed()){
+      win.show();
+      if(win.isMinimized())win.restore();
+      win.focus();
+    }
+  });
+
   return {ok:true};
 }
 async function renew(method){
