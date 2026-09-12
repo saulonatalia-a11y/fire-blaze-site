@@ -4,6 +4,7 @@ contextBridge.exposeInMainWorld('fireBlaze',{
   login:(email,password)=>ipcRenderer.invoke('fb:login',email,password),
   logout:()=>ipcRenderer.invoke('fb:logout'),
   launch:()=>ipcRenderer.invoke('fb:launch'),
+  installMulti:()=>ipcRenderer.invoke('fb:install-multi'),
   renew:method=>ipcRenderer.invoke('fb:renew',method),
   refresh:()=>ipcRenderer.invoke('fb:refresh'),
   openUpdate:url=>ipcRenderer.invoke('fb:open-update',url),
