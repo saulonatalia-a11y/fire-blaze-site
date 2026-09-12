@@ -138,7 +138,28 @@ async function load(tab){
     content.innerHTML='<div class="toolbar"><div><h2>Pagamentos</h2><div class="muted">Histórico do gateway e confirmações.</div></div></div><div class="panel-card"><div class="empty">Será preenchido automaticamente após integrarmos InfinitePay/Ton.</div></div>';
   }
   if(tab==='versoes'){
-    content.innerHTML='<div class="toolbar"><div><h2>Atualizações do FIRE BLAZE</h2><div class="muted">Versão, changelog, download e atualização obrigatória.</div></div></div><div class="panel-card"><div class="empty">Essa área será ligada ao launcher quando iniciarmos a etapa de atualização online.</div></div>';
+    const d=await api('admin_versions');
+    const rows=(d.versions||[]).map(x=>{
+      const pub=x.is_published?'<span class="badge ok">PUBLICADA</span>':'<span class="badge off">RASCUNHO</span>';
+      const req=x.is_mandatory?'<span class="badge admin">OBRIGATÓRIA</span>':'<span class="muted">Opcional</span>';
+      const when=x.published_at?new Date(x.published_at).toLocaleString('pt-BR'):'—';
+      return '<tr><td><b>'+h(x.version||'—')+'</b><div class="muted">'+h(x.title||'Sem título')+'</div></td><td>'+pub+'</td><td>'+req+'</td><td>'+when+'</td><td><div style="display:flex;gap:6px;flex-wrap:wrap">'+
+        (x.download_url?'<a class="btn btn-ghost" href="'+h(x.download_url)+'" target="_blank" rel="noopener">Baixar</a>':'')+
+        '<button class="btn btn-ghost" onclick="toggleVersion(\''+x.id+'\','+(!x.is_published)+')">'+(x.is_published?'Despublicar':'Publicar')+'</button>'+
+        '<button class="btn btn-ghost" style="border-color:#6b2525;color:#ff8585" onclick="deleteVersion(\''+x.id+'\',\''+h(x.version||'')+'\')">Excluir</button></div></td></tr>';
+    }).join('');
+    content.innerHTML='<div class="toolbar"><div><h2>Atualizações do FIRE BLAZE</h2><div class="muted">Publique a versão que o launcher deverá oferecer aos clientes.</div></div></div>'+
+      '<section class="panel-card"><h3>Publicar nova atualização</h3><div class="admin-form">'+
+      '<label>Versão<input id="ver-version" placeholder="Ex.: 1.5.60"></label>'+
+      '<label>Título<input id="ver-title" placeholder="Ex.: Correções e melhorias"></label>'+
+      '<label class="fullrow">URL do arquivo / instalador<input id="ver-url" type="url" placeholder="https://.../FIRE-BLAZE-Mult-v1.5.60.exe"></label>'+
+      '<label class="fullrow">SHA-256 (opcional)<input id="ver-sha" placeholder="Hash do arquivo para validar o download"></label>'+
+      '<label class="fullrow">Changelog<textarea id="ver-log" rows="7" placeholder="Liste o que mudou nesta versão..." style="width:100%;resize:vertical;background:#0c1118;color:#fff;border:1px solid #2a3542;border-radius:10px;padding:12px;font:inherit"></textarea></label>'+
+      '<label class="fullrow" style="display:flex;grid-template-columns:auto 1fr;align-items:center;gap:10px"><input id="ver-mandatory" type="checkbox" style="width:auto"> <span>Atualização obrigatória</span></label>'+
+      '<div class="fullrow"><button class="btn btn-fire" onclick="publishVersion()">Publicar atualização</button></div></div></section>'+
+      '<div class="toolbar" style="margin-top:20px"><div><h2 style="font-size:18px">Histórico de versões</h2><div class="muted">A versão publicada mais recente do canal stable será entregue ao launcher.</div></div></div>'+
+      '<div class="admin-table-wrap"><table class="admin-table" style="min-width:900px"><thead><tr><th>Versão</th><th>Status</th><th>Tipo</th><th>Publicada em</th><th>Ações</th></tr></thead><tbody>'+
+      (rows||'<tr><td colspan="5"><div class="empty">Nenhuma atualização cadastrada.</div></td></tr>')+'</tbody></table></div>';
   }
   if(tab==='dominio'){
     const d=await api('admin_settings'),x=d.settings||{};
@@ -149,6 +170,29 @@ window.editPlan=async(id,old)=>{const v=prompt('Novo preço em reais:',(old/100)
 window.newPlan=async()=>{const name=document.getElementById('pn').value.trim(),raw=document.getElementById('pp').value.replace(',','.');const cents=Math.round(Number(raw)*100);if(!name||!Number.isFinite(cents)){toast('Preencha nome e preço.');return}const d=await api('admin_plan_create',{method:'POST',body:JSON.stringify({name,price_cents:cents})});if(d.ok){toast('Plano criado.');load('planos')}else toast(d.error||'Erro ao criar plano')}
 window.newPromo=async()=>{const name=document.getElementById('prn').value.trim(),code=document.getElementById('prc').value.trim(),discount_value=Number(document.getElementById('prd').value||0);if(!name||discount_value<=0){toast('Preencha a promoção.');return}const d=await api('admin_promo_create',{method:'POST',body:JSON.stringify({name,code,discount_value})});if(d.ok){toast('Promoção criada.');load('promos')}else toast(d.error||'Erro ao criar promoção')}
 window.saveSettings=async()=>{const d=await api('admin_settings_save',{method:'POST',body:JSON.stringify({public_site_url:document.getElementById('su').value,api_base_url:document.getElementById('au').value,customer_area_url:document.getElementById('cu').value,support_whatsapp:document.getElementById('swp').value})});if(d.ok)toast('Configurações salvas.');else toast(d.error||'Erro ao salvar')}
+
+window.publishVersion=async()=>{
+  const version=document.getElementById('ver-version')?.value.trim();
+  const title=document.getElementById('ver-title')?.value.trim();
+  const download_url=document.getElementById('ver-url')?.value.trim();
+  const sha256=document.getElementById('ver-sha')?.value.trim();
+  const changelog=document.getElementById('ver-log')?.value.trim();
+  const is_mandatory=!!document.getElementById('ver-mandatory')?.checked;
+  if(!version||!download_url){toast('Preencha a versão e a URL do arquivo.');return}
+  if(!/^https?:\\/\\//i.test(download_url)){toast('A URL do arquivo precisa começar com http:// ou https://');return}
+  if(!confirm('Publicar a versão '+version+' agora? Ela ficará disponível para o launcher.'))return;
+  const d=await api('admin_version_publish',{method:'POST',body:JSON.stringify({version,title,download_url,sha256,changelog,is_mandatory})});
+  if(d.ok){toast('Atualização '+version+' publicada.');load('versoes')}else toast(d.error||'Erro ao publicar atualização');
+};
+window.toggleVersion=async(id,is_published)=>{
+  const d=await api('admin_version_toggle',{method:'POST',body:JSON.stringify({id,is_published})});
+  if(d.ok){toast(is_published?'Versão publicada.':'Versão despublicada.');load('versoes')}else toast(d.error||'Erro ao alterar versão');
+};
+window.deleteVersion=async(id,version)=>{
+  if(!confirm('Excluir a versão '+version+' do histórico?'))return;
+  const d=await api('admin_version_delete',{method:'POST',body:JSON.stringify({id})});
+  if(d.ok){toast('Versão excluída.');load('versoes')}else toast(d.error||'Erro ao excluir versão');
+};
 
 (async()=>{
   const {data:{session}}=await sb.auth.getSession();
