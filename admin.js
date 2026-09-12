@@ -150,9 +150,9 @@ async function load(tab){
     }).join('');
     content.innerHTML='<div class="toolbar"><div><h2>Atualizações do FIRE BLAZE</h2><div class="muted">Publique a versão que o launcher deverá oferecer aos clientes.</div></div></div>'+
       '<section class="panel-card" style="margin-bottom:16px"><h3>1. Subir o ZIP no GitHub</h3><div class="activity">'+
-      '<div>📦 Clique no botão abaixo, envie o ZIP para a pasta <b>updates</b> e confirme o commit no GitHub.</div>'+
-      '<div>⚠️ Depois volte para esta tela e publique usando exatamente o mesmo nome do arquivo ZIP.</div></div>'+
-      '<div style="margin-top:14px"><a class="btn btn-fire" target="_blank" rel="noopener" href="https://github.com/saulonatalia-a11y/fire-blaze-site/upload/main/updates">Abrir GitHub para subir o ZIP</a></div></section>'+
+      '<div>📦 Clique no botão abaixo, crie uma nova Release e anexe o ZIP da atualização em <b>Attach binaries</b>.</div>'+
+      '<div>⚠️ Use uma tag no formato <b>mult-v1.6.1</b>. Depois volte para esta tela e publique usando exatamente o mesmo nome do arquivo ZIP.</div></div>'+
+      '<div style="margin-top:14px"><a class="btn btn-fire" target="_blank" rel="noopener" href="https://github.com/saulonatalia-a11y/fire-blaze-site/releases/new">Abrir GitHub Releases para subir o ZIP</a></div></section>'+
       '<section class="panel-card"><h3>2. Publicar nova atualização</h3><div class="admin-form">'+
       '<label>Versão<input id="ver-version" placeholder="Ex.: 1.6.1"></label>'+
       '<label>Título<input id="ver-title" placeholder="Ex.: Correções e melhorias"></label>'+
