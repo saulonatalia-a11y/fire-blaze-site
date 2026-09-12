@@ -179,7 +179,7 @@ window.publishVersion=async()=>{
   const changelog=document.getElementById('ver-log')?.value.trim();
   const is_mandatory=!!document.getElementById('ver-mandatory')?.checked;
   if(!version||!download_url){toast('Preencha a versão e a URL do arquivo.');return}
-  if(!/^https?:\\/\\//i.test(download_url)){toast('A URL do arquivo precisa começar com http:// ou https://');return}
+  if(!(download_url.startsWith('https://')||download_url.startsWith('http://'))){toast('A URL do arquivo precisa começar com http:// ou https://');return}
   if(!confirm('Publicar a versão '+version+' agora? Ela ficará disponível para o launcher.'))return;
   const d=await api('admin_version_publish',{method:'POST',body:JSON.stringify({version,title,download_url,sha256,changelog,is_mandatory})});
   if(d.ok){toast('Atualização '+version+' publicada.');load('versoes')}else toast(d.error||'Erro ao publicar atualização');
