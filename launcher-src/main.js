@@ -149,16 +149,58 @@ async function account(){
   return {logged:true,...data};
 }
 
-function installedVersionFromDisk(){
+function readMultiVersion(exePath,fallback=''){
+  try{
+    const dir=path.dirname(exePath||'');
+    const versionFile=path.join(dir,'version');
+    if(fs.existsSync(versionFile)){
+      const v=String(fs.readFileSync(versionFile,'utf8')||'').trim().replace(/^v/i,'');
+      if(v)return v;
+    }
+    const pkgFile=path.join(dir,'resources','app','package.json');
+    if(fs.existsSync(pkgFile)){
+      const pkg=JSON.parse(fs.readFileSync(pkgFile,'utf8'));
+      const v=String(pkg?.version||'').trim().replace(/^v/i,'');
+      if(v)return v;
+    }
+  }catch{}
+  return String(fallback||'').replace(/^v/i,'');
+}
+function installedCandidates(){
   try{
     const root=installedRoot();
-    if(!fs.existsSync(root))return '';
-    const versions=fs.readdirSync(root,{withFileTypes:true})
-      .filter(x=>x.isDirectory() && fs.existsSync(path.join(root,x.name,'.fireblaze-installed')))
-      .map(x=>x.name)
-      .sort((a,b)=>compareVersions(b,a));
-    return versions[0]||'';
-  }catch{return '';}
+    if(!fs.existsSync(root))return [];
+    const rows=[];
+    for(const x of fs.readdirSync(root,{withFileTypes:true})){
+      if(!x.isDirectory())continue;
+      const dir=path.join(root,x.name);
+      if(!fs.existsSync(path.join(dir,'.fireblaze-installed')))continue;
+      let exe='';
+      try{
+        const pathFile=path.join(dir,'.fireblaze-exe');
+        if(fs.existsSync(pathFile))exe=String(fs.readFileSync(pathFile,'utf8')||'').trim();
+      }catch{}
+      if(!exe||!fs.existsSync(exe))exe=findMultiExe(dir);
+      if(!exe||!fs.existsSync(exe))continue;
+      rows.push({dir,exe,version:readMultiVersion(exe,x.name)});
+    }
+    rows.sort((a,b)=>compareVersions(b.version,a.version));
+    return rows;
+  }catch{return [];}
+}
+function installedVersionFromDisk(){
+  return installedCandidates()[0]?.version||'';
+}
+function isMultiRunningAt(exePath){
+  if(process.platform!=='win32'||!exePath)return false;
+  try{
+    const escaped=String(exePath).replace(/'/g,"''");
+    const out=String(execFileSync('powershell.exe',[
+      '-NoProfile','-NonInteractive','-Command',
+      "$p=(Get-CimInstance Win32_Process | Where-Object { $_.ExecutablePath -eq '"+escaped+"' }); if($p){'1'}else{'0'}"
+    ],{encoding:'utf8',windowsHide:true,timeout:6000})||'').trim();
+    return out==='1';
+  }catch{return false;}
 }
 function removeLegacyMultiDesktopShortcut(){
   if(process.platform!=='win32')return;
@@ -189,6 +231,10 @@ async function ensureInstalled(acc){
   const latest=acc?.latest_version;
   if(!latest?.version)throw new Error('Nenhuma versão do FIRE BLAZE Mult foi publicada.');
   const version=String(latest.version).replace(/^v/i,'');
+  const existingBest=installedCandidates()[0]||null;
+  if(existingBest && compareVersions(existingBest.version,version)>=0){
+    return {installed:true,path:existingBest.exe,version:existingBest.version};
+  }
   const target=path.join(installedRoot(),version);
   const marker=path.join(target,'.fireblaze-installed');
   const pathFile=path.join(target,'.fireblaze-exe');
@@ -282,11 +328,19 @@ async function launchMulti(){
   });
 
   child.on('exit',()=>{
-    if(win && !win.isDestroyed()){
+    // Quando o próprio Mult se atualiza, ele fecha e abre novamente.
+    // Aguarda alguns segundos para não exibir o Launcher no meio desse processo.
+    setTimeout(async()=>{
+      if(!win || win.isDestroyed())return;
+      try{
+        const state={account:await account(),installed_version:installedVersionFromDisk(),device_name:deviceName(),launcher_version:LAUNCHER_VERSION,launcher_update:updateCache};
+        win.webContents.send('fb:state-refresh',state);
+      }catch{}
+      if(isMultiRunningAt(installed.path))return;
       win.show();
       if(win.isMinimized())win.restore();
       win.focus();
-    }
+    },4500);
   });
 
   return {ok:true,installed_version:installed.version};
