@@ -149,10 +149,14 @@ async function load(tab){
         '<button class="btn btn-ghost" style="border-color:#6b2525;color:#ff8585" onclick="deleteVersion(\''+x.id+'\',\''+h(x.version||'')+'\')">Excluir</button></div></td></tr>';
     }).join('');
     content.innerHTML='<div class="toolbar"><div><h2>Atualizações do FIRE BLAZE</h2><div class="muted">Publique a versão que o launcher deverá oferecer aos clientes.</div></div></div>'+
-      '<section class="panel-card"><h3>Publicar nova atualização</h3><div class="admin-form">'+
-      '<label>Versão<input id="ver-version" placeholder="Ex.: 1.5.60"></label>'+
+      '<section class="panel-card" style="margin-bottom:16px"><h3>1. Subir o ZIP no GitHub</h3><div class="activity">'+
+      '<div>📦 Clique no botão abaixo, envie o ZIP para a pasta <b>updates</b> e confirme o commit no GitHub.</div>'+
+      '<div>⚠️ Depois volte para esta tela e publique usando exatamente o mesmo nome do arquivo ZIP.</div></div>'+
+      '<div style="margin-top:14px"><a class="btn btn-fire" target="_blank" rel="noopener" href="https://github.com/saulonatalia-a11y/fire-blaze-site/upload/main/updates">Abrir GitHub para subir o ZIP</a></div></section>'+
+      '<section class="panel-card"><h3>2. Publicar nova atualização</h3><div class="admin-form">'+
+      '<label>Versão<input id="ver-version" placeholder="Ex.: 1.6.1"></label>'+
       '<label>Título<input id="ver-title" placeholder="Ex.: Correções e melhorias"></label>'+
-      '<label class="fullrow">URL do arquivo / instalador<input id="ver-url" type="url" placeholder="https://.../FIRE-BLAZE-Mult-v1.5.60.exe"></label>'+
+      '<label class="fullrow">Nome exato do ZIP no GitHub<input id="ver-file" placeholder="Ex.: FIRE-BLAZE-Mult-v1.6.1.zip"></label>'+
       '<label class="fullrow">SHA-256 (opcional)<input id="ver-sha" placeholder="Hash do arquivo para validar o download"></label>'+
       '<label class="fullrow">Changelog<textarea id="ver-log" rows="7" placeholder="Liste o que mudou nesta versão..." style="width:100%;resize:vertical;background:#0c1118;color:#fff;border:1px solid #2a3542;border-radius:10px;padding:12px;font:inherit"></textarea></label>'+
       '<label class="fullrow" style="display:flex;grid-template-columns:auto 1fr;align-items:center;gap:10px"><input id="ver-mandatory" type="checkbox" style="width:auto"> <span>Atualização obrigatória</span></label>'+
@@ -174,13 +178,14 @@ window.saveSettings=async()=>{const d=await api('admin_settings_save',{method:'P
 window.publishVersion=async()=>{
   const version=document.getElementById('ver-version')?.value.trim();
   const title=document.getElementById('ver-title')?.value.trim();
-  const download_url=document.getElementById('ver-url')?.value.trim();
+  const fileName=document.getElementById('ver-file')?.value.trim();
   const sha256=document.getElementById('ver-sha')?.value.trim();
   const changelog=document.getElementById('ver-log')?.value.trim();
   const is_mandatory=!!document.getElementById('ver-mandatory')?.checked;
-  if(!version||!download_url){toast('Preencha a versão e a URL do arquivo.');return}
-  if(!(download_url.startsWith('https://')||download_url.startsWith('http://'))){toast('A URL do arquivo precisa começar com http:// ou https://');return}
-  if(!confirm('Publicar a versão '+version+' agora? Ela ficará disponível para o launcher.'))return;
+  if(!version||!fileName){toast('Preencha a versão e o nome exato do ZIP.');return}
+  if(!fileName.toLowerCase().endsWith('.zip')){toast('O arquivo da atualização precisa ser .zip');return}
+  const download_url='https://raw.githubusercontent.com/saulonatalia-a11y/fire-blaze-site/main/updates/'+encodeURIComponent(fileName);
+  if(!confirm('Publicar a versão '+version+' usando o arquivo '+fileName+'?'))return;
   const d=await api('admin_version_publish',{method:'POST',body:JSON.stringify({version,title,download_url,sha256,changelog,is_mandatory})});
   if(d.ok){toast('Atualização '+version+' publicada.');load('versoes')}else toast(d.error||'Erro ao publicar atualização');
 };
