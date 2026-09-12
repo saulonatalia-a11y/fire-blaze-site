@@ -184,7 +184,8 @@ window.publishVersion=async()=>{
   const is_mandatory=!!document.getElementById('ver-mandatory')?.checked;
   if(!version||!fileName){toast('Preencha a versão e o nome exato do ZIP.');return}
   if(!fileName.toLowerCase().endsWith('.zip')){toast('O arquivo da atualização precisa ser .zip');return}
-  const download_url='https://raw.githubusercontent.com/saulonatalia-a11y/fire-blaze-site/main/updates/'+encodeURIComponent(fileName);
+  const tag='mult-v'+version.replace(/^v/i,'');
+  const download_url='https://github.com/saulonatalia-a11y/fire-blaze-site/releases/download/'+encodeURIComponent(tag)+'/'+encodeURIComponent(fileName);
   if(!confirm('Publicar a versão '+version+' usando o arquivo '+fileName+'?'))return;
   const d=await api('admin_version_publish',{method:'POST',body:JSON.stringify({version,title,download_url,sha256,changelog,is_mandatory})});
   if(d.ok){toast('Atualização '+version+' publicada.');load('versoes')}else toast(d.error||'Erro ao publicar atualização');
