@@ -170,7 +170,10 @@ async function load(tab){
     const rows=(d.messages||[]).map(x=>{
       const status=x.is_active?'<span class="badge ok">ATIVA</span>':'<span class="badge off">ENCERRADA</span>';
       const when=x.published_at?new Date(x.published_at).toLocaleString('pt-BR'):'—';
-      return '<tr><td><b>'+h(x.title||'Recado FIRE BLAZE')+'</b><div class="muted" style="max-width:650px;white-space:pre-wrap">'+h(x.message||'')+'</div></td><td>'+status+'</td><td>'+when+'</td><td><div style="display:flex;gap:6px;flex-wrap:wrap">'+
+      const until=x.expires_at?new Date(x.expires_at).toLocaleString('pt-BR'):'—';
+      const secs=Number(x.duration_seconds||0);
+      const duration=secs>=86400?(secs/86400)+' dia(s)':secs>=3600?(secs/3600)+' hora(s)':secs>=60?(secs/60)+' min':secs+' s';
+      return '<tr><td><b>'+h(x.title||'Recado FIRE BLAZE')+'</b><div class="muted" style="max-width:650px;white-space:pre-wrap">'+h(x.message||'')+'</div></td><td>'+status+'</td><td>'+when+'<div class="muted">Duração: '+h(duration)+'<br>Expira: '+h(until)+'</div></td><td><div style="display:flex;gap:6px;flex-wrap:wrap">'+
         '<button class="btn btn-ghost" onclick="toggleMessage(\''+x.id+'\','+(!x.is_active)+')">'+(x.is_active?'Encerrar':'Reenviar')+'</button>'+
         '<button class="btn btn-ghost" style="border-color:#6b2525;color:#ff8585" onclick="deleteMessage(\''+x.id+'\')">Excluir</button></div></td></tr>';
     }).join('');
@@ -178,6 +181,9 @@ async function load(tab){
       '<section class="panel-card" style="margin-bottom:18px"><h3>Enviar novo recado</h3><div class="admin-form">'+
       '<label class="fullrow">Título<input id="msg-title" placeholder="Ex.: Aviso importante"></label>'+
       '<label class="fullrow">Mensagem<textarea id="msg-body" rows="7" placeholder="Digite o recado que todos os clientes verão..." style="width:100%;resize:vertical;background:#0c1118;color:#fff;border:1px solid #2a3542;border-radius:10px;padding:12px;font:inherit"></textarea></label>'+
+      '<label>Tempo que ficará aparecendo<input id="msg-duration" type="number" min="1" value="3"></label>'+
+      '<label>Unidade<select id="msg-duration-unit"><option value="minutes" selected>Minutos</option><option value="hours">Horas</option><option value="days">Dias</option></select></label>'+
+      '<div class="fullrow"><div class="muted">Exemplo: 3 minutos = se o cliente não fechar pelo X, a mensagem some sozinha após 3 minutos.</div></div>'+
       '<div class="fullrow"><button class="btn btn-fire" onclick="publishMessage()">Enviar mensagem para todos</button></div></div></section>'+
       '<div class="toolbar"><div><h2 style="font-size:18px">Histórico de mensagens</h2><div class="muted">Mensagens ativas continuam disponíveis no servidor, mas cada cliente pode dispensar pelo X.</div></div></div>'+
       '<div class="admin-table-wrap"><table class="admin-table" style="min-width:850px"><thead><tr><th>Mensagem</th><th>Status</th><th>Enviada em</th><th>Ações</th></tr></thead><tbody>'+
@@ -196,9 +202,13 @@ window.saveSettings=async()=>{const d=await api('admin_settings_save',{method:'P
 window.publishMessage=async()=>{
   const title=document.getElementById('msg-title')?.value.trim();
   const message=document.getElementById('msg-body')?.value.trim();
+  const duration_value=Number(document.getElementById('msg-duration')?.value||0);
+  const duration_unit=document.getElementById('msg-duration-unit')?.value||'minutes';
   if(!message){toast('Digite a mensagem.');return}
-  if(!confirm('Enviar este recado para todos os clientes com o FIRE BLAZE Mult aberto?'))return;
-  const d=await api('admin_message_publish',{method:'POST',body:JSON.stringify({title,message})});
+  if(!Number.isFinite(duration_value)||duration_value<=0){toast('Escolha por quanto tempo a mensagem ficará aparecendo.');return}
+  const unitLabel={minutes:'minuto(s)',hours:'hora(s)',days:'dia(s)'}[duration_unit]||duration_unit;
+  if(!confirm('Enviar este recado para todos?\n\nEle ficará disponível por '+duration_value+' '+unitLabel+' ou até o cliente fechar pelo X.'))return;
+  const d=await api('admin_message_publish',{method:'POST',body:JSON.stringify({title,message,duration_value,duration_unit})});
   if(d.ok){toast('Mensagem enviada para todos.');load('mensagens')}else toast(d.error||'Erro ao enviar mensagem');
 };
 window.toggleMessage=async(id,is_active)=>{
