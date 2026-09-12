@@ -201,6 +201,16 @@ setInterval(async()=>{
 
 load();
 
+fireBlaze.onStateRefresh?.(s=>{
+  try{
+    installedVersionCache=s?.installed_version||installedVersionCache;
+    launcherUpdateCache=s?.launcher_update||launcherUpdateCache;
+    launcherVersionCache=s?.launcher_version||launcherVersionCache;
+    if(s?.device_name)$('device').textContent=s.device_name;
+    if(s?.account)renderAccount(s.account,installedVersionCache,launcherUpdateCache);
+  }catch{}
+});
+
 fireBlaze.onLauncherUpdateProgress?.(p=>{
   let t='';
   if(p?.stage==='install')t='Instalando atualização...';
