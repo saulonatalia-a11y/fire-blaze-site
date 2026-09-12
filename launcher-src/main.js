@@ -289,7 +289,14 @@ async function launchMulti(){
     }
   });
 
-  return {ok:true};
+  return {ok:true,installed_version:installed.version};
+}
+async function installMultiOnly(){
+  const acc=await account();
+  if(!acc.logged)throw new Error('Faça login.');
+  if(!acc.active)throw new Error('Sua assinatura está inativa. Renove para atualizar o Multi.');
+  const installed=await ensureInstalled(acc);
+  return {ok:true,installed_version:installed.version};
 }
 async function renew(method){
   const data=await api(CHECKOUT_URL,{method});
@@ -301,10 +308,11 @@ function createWindow(){
   win=new BrowserWindow({width:1060,height:720,minWidth:900,minHeight:620,backgroundColor:'#07090d',title:'FIRE BLAZE Launcher',icon:iconPath(),autoHideMenuBar:true,webPreferences:{preload:path.join(__dirname,'preload.js'),contextIsolation:true,nodeIntegration:false,sandbox:true}});
   win.loadFile('index.html');
 }
-ipcMain.handle('fb:state',async()=>({account:await account(),installed_version:installedVersionFromDisk(),device_name:deviceName(),launcher_update:await launcherUpdate()}));
+ipcMain.handle('fb:state',async()=>({account:await account(),installed_version:installedVersionFromDisk(),device_name:deviceName(),launcher_version:LAUNCHER_VERSION,launcher_update:await launcherUpdate()}));
 ipcMain.handle('fb:login',async(_e,email,password)=>{await login(String(email||'').trim(),String(password||''));removeLegacyMultiDesktopShortcut();return {ok:true,account:await account()};});
 ipcMain.handle('fb:logout',async()=>{saveAuth(null);return {ok:true};});
 ipcMain.handle('fb:launch',async()=>launchMulti());
+ipcMain.handle('fb:install-multi',async()=>installMultiOnly());
 ipcMain.handle('fb:renew',async(_e,method)=>renew(String(method||'')));
 ipcMain.handle('fb:refresh',async()=>account());
 ipcMain.handle('fb:open-update',async(_e,url)=>{if(/^https:\/\//i.test(String(url||'')))await shell.openExternal(String(url));return true;});
