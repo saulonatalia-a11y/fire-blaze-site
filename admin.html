@@ -6,6 +6,7 @@
 <title>FIRE BLAZE Admin</title>
 <link rel="stylesheet" href="styles.css">
 <style>
+[hidden]{display:none!important}
 :root{--a-bg:#070a0f;--a-card:#101620;--a-card2:#151d29;--a-line:#263140;--a-text:#f5f7fb;--a-muted:#8f9aaa;--a-fire:#ff6a1a;--a-fire2:#ff3024;--a-ok:#35d07f;--a-warn:#f4b740}
 body.admin-page{background:linear-gradient(180deg,#070a0f,#0b1017);min-height:100vh}
 .admin-login-shell{min-height:100vh;display:grid;grid-template-columns:1.05fr .95fr}
@@ -81,7 +82,7 @@ radial-gradient(circle at 30% 25%,#4b1a08 0,transparent 38%),linear-gradient(145
   </div>
 </section>
 
-<section id="admin-shell" class="admin-shell" hidden>
+<section id="admin-shell" class="admin-shell" hidden style="display:none">
   <aside class="admin-sidebar">
     <div class="admin-brand">🔥 FIRE <span>BLAZE</span></div>
     <nav class="admin-nav">
@@ -116,6 +117,6 @@ radial-gradient(circle at 30% 25%,#4b1a08 0,transparent 38%),linear-gradient(145
 
 <script>window.FIRE_BLAZE_CONFIG={supabaseUrl:"https://fqwoshdohwcbdgbdvmqc.supabase.co",supabaseKey:"sb_publishable_XMv1L9yIinwd1KuMMa-lUQ_Yj2HZ4qc",apiUrl:"https://fqwoshdohwcbdgbdvmqc.supabase.co/functions/v1/fire-blaze-site"};</script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="admin.js"></script>
+<script src="admin.js?v=20260911-2238"></script>
 </body>
 </html>
