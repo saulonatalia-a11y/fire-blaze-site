@@ -61,7 +61,7 @@ document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>{
   document.querySelectorAll('[data-tab]').forEach(x=>x.classList.remove('active'));b.classList.add('active');load(b.dataset.tab)
 });
 
-function setTitle(tab){const map={dash:'Dashboard',clientes:'Clientes',assinaturas:'Assinaturas',planos:'Planos',promos:'Promoções',pagamentos:'Pagamentos',versoes:'Atualizações',dominio:'Domínio e configurações'};title.textContent=map[tab]||'FIRE BLAZE Admin'}
+function setTitle(tab){const map={dash:'Dashboard',clientes:'Clientes',assinaturas:'Assinaturas',planos:'Planos',promos:'Promoções',pagamentos:'Pagamentos',versoes:'Atualizações',mensagens:'Mensagens para clientes',dominio:'Domínio e configurações'};title.textContent=map[tab]||'FIRE BLAZE Admin'}
 function stat(label,value,foot){return '<div class="stat-card"><div class="stat-label">'+label+'</div><div class="stat-value">'+value+'</div><div class="stat-foot">'+foot+'</div></div>'}
 
 async function load(tab){
@@ -165,6 +165,24 @@ async function load(tab){
       '<div class="admin-table-wrap"><table class="admin-table" style="min-width:900px"><thead><tr><th>Versão</th><th>Status</th><th>Tipo</th><th>Publicada em</th><th>Ações</th></tr></thead><tbody>'+
       (rows||'<tr><td colspan="5"><div class="empty">Nenhuma atualização cadastrada.</div></td></tr>')+'</tbody></table></div>';
   }
+  if(tab==='mensagens'){
+    const d=await api('admin_messages');
+    const rows=(d.messages||[]).map(x=>{
+      const status=x.is_active?'<span class="badge ok">ATIVA</span>':'<span class="badge off">ENCERRADA</span>';
+      const when=x.published_at?new Date(x.published_at).toLocaleString('pt-BR'):'—';
+      return '<tr><td><b>'+h(x.title||'Recado FIRE BLAZE')+'</b><div class="muted" style="max-width:650px;white-space:pre-wrap">'+h(x.message||'')+'</div></td><td>'+status+'</td><td>'+when+'</td><td><div style="display:flex;gap:6px;flex-wrap:wrap">'+
+        '<button class="btn btn-ghost" onclick="toggleMessage(\''+x.id+'\','+(!x.is_active)+')">'+(x.is_active?'Encerrar':'Reenviar')+'</button>'+
+        '<button class="btn btn-ghost" style="border-color:#6b2525;color:#ff8585" onclick="deleteMessage(\''+x.id+'\')">Excluir</button></div></td></tr>';
+    }).join('');
+    content.innerHTML='<div class="toolbar"><div><h2>Mensagens para todos</h2><div class="muted">Envie um recado que aparecerá dentro do FIRE BLAZE Mult. O cliente pode fechar pelo X.</div></div></div>'+
+      '<section class="panel-card" style="margin-bottom:18px"><h3>Enviar novo recado</h3><div class="admin-form">'+
+      '<label class="fullrow">Título<input id="msg-title" placeholder="Ex.: Aviso importante"></label>'+
+      '<label class="fullrow">Mensagem<textarea id="msg-body" rows="7" placeholder="Digite o recado que todos os clientes verão..." style="width:100%;resize:vertical;background:#0c1118;color:#fff;border:1px solid #2a3542;border-radius:10px;padding:12px;font:inherit"></textarea></label>'+
+      '<div class="fullrow"><button class="btn btn-fire" onclick="publishMessage()">Enviar mensagem para todos</button></div></div></section>'+
+      '<div class="toolbar"><div><h2 style="font-size:18px">Histórico de mensagens</h2><div class="muted">Mensagens ativas continuam disponíveis no servidor, mas cada cliente pode dispensar pelo X.</div></div></div>'+
+      '<div class="admin-table-wrap"><table class="admin-table" style="min-width:850px"><thead><tr><th>Mensagem</th><th>Status</th><th>Enviada em</th><th>Ações</th></tr></thead><tbody>'+
+      (rows||'<tr><td colspan="4"><div class="empty">Nenhuma mensagem enviada.</div></td></tr>')+'</tbody></table></div>';
+  }
   if(tab==='dominio'){
     const d=await api('admin_settings'),x=d.settings||{};
     content.innerHTML='<div class="toolbar"><div><h2>Domínio e configurações</h2><div class="muted">Troque as URLs no futuro sem alterar o aplicativo.</div></div></div><section class="panel-card"><div class="admin-form"><label>Site público<input id="su" value="'+h(x.public_site_url||'')+'" placeholder="https://fireblazemult.com.br"></label><label>API<input id="au" value="'+h(x.api_base_url||'')+'" placeholder="https://api.fireblazemult.com.br"></label><label>Área do cliente<input id="cu" value="'+h(x.customer_area_url||'')+'" placeholder="https://app.fireblazemult.com.br"></label><label>WhatsApp do suporte<input id="swp" value="'+h(x.support_whatsapp||'')+'" placeholder="55..."></label><div class="fullrow"><button class="btn btn-fire" onclick="saveSettings()">Salvar configurações</button></div></div></section>';
@@ -174,6 +192,24 @@ window.editPlan=async(id,old)=>{const v=prompt('Novo preço em reais:',(old/100)
 window.newPlan=async()=>{const name=document.getElementById('pn').value.trim(),raw=document.getElementById('pp').value.replace(',','.');const cents=Math.round(Number(raw)*100);if(!name||!Number.isFinite(cents)){toast('Preencha nome e preço.');return}const d=await api('admin_plan_create',{method:'POST',body:JSON.stringify({name,price_cents:cents})});if(d.ok){toast('Plano criado.');load('planos')}else toast(d.error||'Erro ao criar plano')}
 window.newPromo=async()=>{const name=document.getElementById('prn').value.trim(),code=document.getElementById('prc').value.trim(),discount_value=Number(document.getElementById('prd').value||0);if(!name||discount_value<=0){toast('Preencha a promoção.');return}const d=await api('admin_promo_create',{method:'POST',body:JSON.stringify({name,code,discount_value})});if(d.ok){toast('Promoção criada.');load('promos')}else toast(d.error||'Erro ao criar promoção')}
 window.saveSettings=async()=>{const d=await api('admin_settings_save',{method:'POST',body:JSON.stringify({public_site_url:document.getElementById('su').value,api_base_url:document.getElementById('au').value,customer_area_url:document.getElementById('cu').value,support_whatsapp:document.getElementById('swp').value})});if(d.ok)toast('Configurações salvas.');else toast(d.error||'Erro ao salvar')}
+
+window.publishMessage=async()=>{
+  const title=document.getElementById('msg-title')?.value.trim();
+  const message=document.getElementById('msg-body')?.value.trim();
+  if(!message){toast('Digite a mensagem.');return}
+  if(!confirm('Enviar este recado para todos os clientes com o FIRE BLAZE Mult aberto?'))return;
+  const d=await api('admin_message_publish',{method:'POST',body:JSON.stringify({title,message})});
+  if(d.ok){toast('Mensagem enviada para todos.');load('mensagens')}else toast(d.error||'Erro ao enviar mensagem');
+};
+window.toggleMessage=async(id,is_active)=>{
+  const d=await api('admin_message_toggle',{method:'POST',body:JSON.stringify({id,is_active})});
+  if(d.ok){toast(is_active?'Mensagem reenviada.':'Mensagem encerrada.');load('mensagens')}else toast(d.error||'Erro ao alterar mensagem');
+};
+window.deleteMessage=async(id)=>{
+  if(!confirm('Excluir esta mensagem do histórico?'))return;
+  const d=await api('admin_message_delete',{method:'POST',body:JSON.stringify({id})});
+  if(d.ok){toast('Mensagem excluída.');load('mensagens')}else toast(d.error||'Erro ao excluir mensagem');
+};
 
 window.publishVersion=async()=>{
   const version=document.getElementById('ver-version')?.value.trim();
