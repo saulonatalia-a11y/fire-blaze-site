@@ -54,12 +54,12 @@ jobs:
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: launcher-v1.2.9
-          name: FIRE BLAZE Launcher v1.2.9
+          tag_name: launcher-v1.2.10
+          name: FIRE BLAZE Launcher v1.2.10
           body: |
             Instalador oficial do FIRE BLAZE Launcher/Painel.
             Faça login com a mesma conta usada no site.
           files: |
-            launcher-src/dist/FIRE-BLAZE-Launcher-Setup-v1.2.9.exe
+            launcher-src/dist/FIRE-BLAZE-Launcher-Setup-v1.2.10.exe
             launcher-src/dist/latest.yml
           make_latest: true
