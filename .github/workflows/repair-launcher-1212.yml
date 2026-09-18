@@ -1,0 +1,25 @@
+name: Repair Launcher 1.2.11 to 1.2.12 update path
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+    paths:
+      - '.github/workflows/repair-launcher-1212.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download 1.2.12 update files
+        run: |
+          curl -fL "https://github.com/saulonatalia-a11y/fire-blaze-site/releases/download/launcher-v1.2.12/FIRE-BLAZE-Launcher-Setup-v1.2.12.exe" -o FIRE-BLAZE-Launcher-Setup-v1.2.12.exe
+          curl -fL "https://github.com/saulonatalia-a11y/fire-blaze-site/releases/download/launcher-v1.2.12/latest.yml" -o latest.yml
+      - name: Put matching exe and metadata on 1.2.11 compatibility feed
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release upload launcher-v1.2.11 FIRE-BLAZE-Launcher-Setup-v1.2.12.exe latest.yml --repo saulonatalia-a11y/fire-blaze-site --clobber
