@@ -161,11 +161,14 @@ async function loadAccount(){
   const note=document.getElementById('download-note');
 
   if(d.active){
-    document.getElementById('status').textContent='ATIVA';
-    pill.textContent='● Assinatura ativa';
+    const isTrial=d.subscription?.access_kind==='trial';
+    document.getElementById('status').textContent=isTrial?'TESTE GRÁTIS':'ATIVA';
+    pill.textContent=isTrial?'● Teste grátis ativo':'● Assinatura ativa';
     pill.className='status-pill active';
     inactive.hidden=true; active.hidden=false;
-    document.getElementById('top-msg').textContent='Seu acesso está liberado.';
+    document.getElementById('top-msg').textContent=isTrial?'Seu teste grátis está ativo. Ao vencer, assine para continuar usando.':'Seu acesso está liberado.';
+    document.querySelector('#active-area h3').textContent=isTrial?'🎁 Teste grátis liberado':'✅ Acesso liberado';
+    document.querySelector('#active-area .client-note').textContent=isTrial?'Você pode baixar e usar o FIRE BLAZE até o vencimento do teste. Depois, o Launcher solicitará a assinatura.':'Seu pagamento foi confirmado e sua assinatura está ativa.';
     download.href='#';
     download.setAttribute('aria-disabled','true');
     download.style.pointerEvents='none';
