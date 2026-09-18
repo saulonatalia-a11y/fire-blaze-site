@@ -61,7 +61,7 @@ document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>{
   document.querySelectorAll('[data-tab]').forEach(x=>x.classList.remove('active'));b.classList.add('active');load(b.dataset.tab)
 });
 
-function setTitle(tab){const map={dash:'Dashboard',clientes:'Clientes',assinaturas:'Assinaturas',planos:'Planos',promos:'Promoções',pagamentos:'Pagamentos',versoes:'Atualizações',mensagens:'Mensagens para clientes',dominio:'Domínio e configurações'};title.textContent=map[tab]||'FIRE BLAZE Admin'}
+function setTitle(tab){const map={dash:'Dashboard',clientes:'Clientes',assinaturas:'Assinaturas',comercial:'Assinatura e Teste',promos:'Promoções',pagamentos:'Pagamentos',versoes:'Atualizações',mensagens:'Mensagens para clientes',dominio:'Domínio e configurações'};title.textContent=map[tab]||'FIRE BLAZE Admin'}
 function stat(label,value,foot){return '<div class="stat-card"><div class="stat-label">'+label+'</div><div class="stat-value">'+value+'</div><div class="stat-foot">'+foot+'</div></div>'}
 
 async function load(tab){
@@ -85,6 +85,7 @@ async function load(tab){
       const active=!x.is_blocked && s?.status==='active' && (!end||end>now);
       let status='<span class="badge off">AGUARDANDO PAGAMENTO</span>';
       if(x.is_blocked) status='<span class="badge off">DESATIVADA</span>';
+      else if(active && s?.access_kind==='trial') status='<span class="badge admin">TESTE GRÁTIS</span>';
       else if(active) status='<span class="badge ok">ATIVA</span>';
       else if(s?.status==='expired'||(end&&end<=now)) status='<span class="badge off">EXPIRADA</span>';
       else if(s?.status==='pending'||s?.status==='past_due') status='<span class="badge off">AGUARDANDO PAGAMENTO</span>';
@@ -96,7 +97,7 @@ async function load(tab){
           '<input id="dur-'+x.id+'" type="number" min="0" value="'+remainingDays+'" style="width:72px;background:#0c1118;color:#fff;border:1px solid #2a3542;border-radius:8px;padding:8px">'+
           '<select id="unit-'+x.id+'" style="background:#0c1118;color:#fff;border:1px solid #2a3542;border-radius:8px;padding:8px">'+
           '<option value="hours">Horas</option><option value="days" selected>Dias</option><option value="months">Meses</option><option value="years">Anos</option></select>'+
-          '<button class="btn btn-fire" onclick="saveAccess(\''+x.id+'\')">Salvar</button>'+
+          '<button class="btn btn-fire" onclick="saveAccess(\''+x.id+'\')">Salvar acesso</button>'+ '<button class="btn btn-ghost" onclick="trialUser(\''+x.id+'\')">+ Teste</button>'+ (s?.access_kind==='trial'?'<button class="btn btn-ghost" onclick="endTrial(\''+x.id+'\')">Encerrar teste</button>':'')+
           '<button class="btn btn-ghost" onclick="deactivateUser(\''+x.id+'\')">Desativar</button>'+
           '<button class="btn btn-ghost" onclick="resetDevice(\''+x.id+'\',\''+h(x.email)+'\')">Liberar novo PC</button>'+
           '<button class="btn btn-ghost" style="border-color:#6b2525;color:#ff8585" onclick="deleteUser(\''+x.id+'\',\''+h(x.email)+'\')">Excluir</button>'+
@@ -116,6 +117,7 @@ async function load(tab){
       const s=x.subscription,end=s?.current_period_end?new Date(s.current_period_end).getTime():0;
       let label='AGUARDANDO PAGAMENTO',cls='off';
       if(x.is_blocked||s?.status==='blocked'){label='DESATIVADA';cls='off'}
+      else if(s?.status==='active'&&(!end||end>now)&&s?.access_kind==='trial'){label='TESTE GRÁTIS';cls='admin'}
       else if(s?.status==='active'&&(!end||end>now)){label='ATIVA';cls='ok'}
       else if(s?.status==='expired'||(end&&end<=now)){label='EXPIRADA';cls='off'}
       return '<tr><td><b>'+h(x.name||'Sem nome')+'</b></td><td>'+h(x.email)+'</td><td><span class="badge '+cls+'">'+label+'</span></td><td>'+(s?.current_period_end?new Date(s.current_period_end).toLocaleString('pt-BR'):'—')+'</td></tr>';
@@ -124,10 +126,11 @@ async function load(tab){
       '<div class="admin-table-wrap"><table class="admin-table"><thead><tr><th>Cliente</th><th>Email</th><th>Status</th><th>Acesso até</th></tr></thead><tbody>'+
       (rows||'<tr><td colspan="4"><div class="empty">Nenhum cliente cadastrado.</div></td></tr>')+'</tbody></table></div>';
   }
-  if(tab==='planos'){
-    const d=await api('admin_plans');
-    const items=(d.plans||[]).map(x=>'<div class="plan-row"><div><strong>'+h(x.name)+'</strong><div class="muted">'+h(x.description||'Plano FIRE BLAZE')+' • '+x.duration_days+' dias • '+x.max_devices+' PC</div></div><div><strong>'+(x.price_cents/100).toLocaleString('pt-BR',{style:'currency',currency:x.currency||'BRL'})+'</strong> <button class="btn btn-ghost" onclick="editPlan(\''+x.id+'\','+x.price_cents+')">Alterar</button></div></div>').join('');
-    content.innerHTML='<div class="toolbar"><div><h2>Planos</h2><div class="muted">Você poderá alterar preços sem mexer no código.</div></div></div>'+(items||'<div class="empty">Nenhum plano.</div>')+'<section class="panel-card" style="margin-top:16px"><h3>Criar novo plano</h3><div class="admin-form"><label>Nome<input id="pn" placeholder="Ex.: FIRE BLAZE Trimestral"></label><label>Preço<input id="pp" placeholder="Ex.: 79,90"></label><div class="fullrow"><button class="btn btn-fire" onclick="newPlan()">Criar plano</button></div></div></section>';
+  if(tab==='comercial'){
+    const [sd,pd]=await Promise.all([api('admin_settings'),api('admin_plans')]), x=sd.settings||{}, p=(pd.plans||[]).find(z=>z.is_active&&z.is_featured)||(pd.plans||[]).find(z=>z.is_active)||{};
+    content.innerHTML='<div class="toolbar"><div><h2>Assinatura mensal e Teste Grátis</h2><div class="muted">Um único valor mensal para novos pagamentos e próximas renovações. Configure também o teste concedido aos novos cadastros.</div></div></div>'+
+    '<div class="panel-grid"><section class="panel-card"><h3>💳 Valor mensal</h3><div class="admin-form"><label class="fullrow">Valor atual (R$)<input id="monthly-price" value="'+((Number(p.price_cents||0)/100).toFixed(2).replace('.',','))+'"></label><div class="fullrow muted">Ao alterar, o site e novos checkouts usam o novo valor. Assinaturas recorrentes do Asaas são atualizadas para as próximas cobranças; o período já pago não muda.</div><div class="fullrow"><button class="btn btn-fire" onclick="saveMonthlyPrice()">Salvar valor mensal</button></div></div></section>'+
+    '<section class="panel-card"><h3>🎁 Teste grátis</h3><div class="admin-form"><label class="fullrow">Status<select id="trial-enabled"><option value="true" '+(x.trial_enabled?'selected':'')+'>ATIVADO</option><option value="false" '+(!x.trial_enabled?'selected':'')+'>DESATIVADO</option></select></label><label>Duração<input id="trial-value" type="number" min="1" value="'+h(x.trial_duration_value||24)+'"></label><label>Unidade<select id="trial-unit"><option value="hours" '+(x.trial_duration_unit==='hours'?'selected':'')+'>Horas</option><option value="days" '+(x.trial_duration_unit==='days'?'selected':'')+'>Dias</option></select></label><div class="fullrow muted">A configuração vale somente para novos cadastros. Quem já recebeu um teste mantém o vencimento individual que recebeu.</div><div class="fullrow"><button class="btn btn-fire" onclick="saveTrialSettings()">Salvar teste grátis</button></div></div></section></div>';
   }
   if(tab==='promos'){
     const d=await api('admin_promos');
@@ -279,3 +282,8 @@ window.resetDevice=async(id,email)=>{
   const d=await api('admin_user_reset_device',{method:'POST',body:JSON.stringify({user_id:id})});
   if(d.ok){toast('Novo PC liberado para esta conta.');load('clientes')}else toast(d.error||'Erro ao liberar novo PC');
 };
+
+window.saveMonthlyPrice=async()=>{const raw=document.getElementById('monthly-price').value.replace(',','.');const price_cents=Math.round(Number(raw)*100);if(!Number.isFinite(price_cents)||price_cents<100){toast('Valor mensal inválido.');return}if(!confirm('Alterar o valor mensal para '+(price_cents/100).toLocaleString('pt-BR',{style:'currency',currency:'BRL'})+'? O novo valor valerá para novas compras e próximas renovações.'))return;const d=await api('admin_monthly_update',{method:'POST',body:JSON.stringify({price_cents})});if(d.ok){toast('Valor mensal atualizado.');load('comercial')}else toast(d.error||'Erro ao atualizar valor')};
+window.saveTrialSettings=async()=>{const old=await api('admin_settings'),x=old.settings||{};const trial_enabled=document.getElementById('trial-enabled').value==='true',trial_duration_value=Number(document.getElementById('trial-value').value||0),trial_duration_unit=document.getElementById('trial-unit').value;if(trial_duration_value<1){toast('Informe a duração do teste.');return}const d=await api('admin_settings_save',{method:'POST',body:JSON.stringify({public_site_url:x.public_site_url||'',api_base_url:x.api_base_url||'',customer_area_url:x.customer_area_url||'',support_whatsapp:x.support_whatsapp||'',trial_enabled,trial_duration_value,trial_duration_unit})});if(d.ok){toast(trial_enabled?'Teste grátis ativado.':'Teste grátis desativado.');load('comercial')}else toast(d.error||'Erro ao salvar teste')};
+window.trialUser=async(id)=>{const raw=prompt('Quanto tempo deseja ADICIONAR ao teste deste usuário? Ex.: 24');if(raw===null)return;const duration_value=Number(raw);if(!Number.isFinite(duration_value)||duration_value<=0){toast('Tempo inválido.');return}const unit=confirm('OK = DIAS\nCancelar = HORAS')?'days':'hours';const d=await api('admin_trial_user',{method:'POST',body:JSON.stringify({user_id:id,action:'grant',duration_value,duration_unit:unit})});if(d.ok){toast('Tempo de teste adicionado.');load('clientes')}else toast(d.error||'Erro ao alterar teste')};
+window.endTrial=async(id)=>{if(!confirm('Encerrar o teste grátis deste usuário agora? O Mult será bloqueado quando o Launcher validar a licença.'))return;const d=await api('admin_trial_user',{method:'POST',body:JSON.stringify({user_id:id,action:'end'})});if(d.ok){toast('Teste encerrado.');load('clientes')}else toast(d.error||'Erro ao encerrar teste')};
