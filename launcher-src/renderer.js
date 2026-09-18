@@ -121,6 +121,12 @@ async function installLatestMulti(button,msgEl){
     if(msgEl)msgEl.textContent='Atualização concluída.';
     msg('Atualização concluída.');
     await reloadFullState();
+    // A instalação terminou: se o disco já reporta a versão publicada, feche imediatamente o modal obrigatório.
+    const latestNow=current?.latest_version?.version||'';
+    if(latestNow && installedVersionCache && compare(installedVersionCache,latestNow)>=0){
+      const modal=$('multi-update-modal'); if(modal)modal.style.display='none';
+      const launch=$('launch'); if(launch){launch.disabled=!current?.active || !!launcherUpdateCache?.available;launch.textContent='🔥 ABRIR MULTI';}
+    }
   }catch(e){
     const t=e.message||'Não foi possível atualizar o Multi.';
     if(msgEl)msgEl.textContent=t;
