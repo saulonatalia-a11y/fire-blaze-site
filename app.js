@@ -60,8 +60,11 @@ async function api(name,options={}){
 
 (async()=>{
   try{
-    const d=await api('plans');
-    const p=d.plans?.[0];
+    const d=await api('public_settings');
+    const p=d.plan;
+    const s=d.settings||{};
+    const badge=document.getElementById('trial-badge'),copy=document.getElementById('trial-copy');
+    if(s.trial_enabled){const unit=s.trial_duration_unit==='days'?'dia(s)':'hora(s)';if(badge)badge.textContent='TESTE GRÁTIS ATIVO';if(copy)copy.textContent='Cadastre-se agora e receba '+s.trial_duration_value+' '+unit+' grátis.';}else{if(copy)copy.textContent='Teste grátis indisponível no momento.';}
     if(p){
       document.getElementById('plan-name').textContent=p.name;
       document.getElementById('plan-price').textContent=new Intl.NumberFormat('pt-BR',{style:'currency',currency:p.currency||'BRL'}).format((p.price_cents||0)/100);
