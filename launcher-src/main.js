@@ -189,7 +189,35 @@ function installedCandidates(){
   }catch{return [];}
 }
 function installedVersionFromDisk(){
-  return installedCandidates()[0]?.version||'';
+  const candidates=installedCandidates();
+  if(candidates[0]?.version)return candidates[0].version;
+
+  // Recuperação: versões antigas do Launcher só reconheciam instalações com marker.
+  // Se o Mult já existe em uma pasta de versão (ex.: ...\\Mult\\1.6.42),
+  // reconhece a versão pelo diretório/executável e recria os markers.
+  try{
+    const root=installedRoot();
+    if(!fs.existsSync(root))return '';
+    const rows=[];
+    for(const x of fs.readdirSync(root,{withFileTypes:true})){
+      if(!x.isDirectory() || !/^v?\\d+(?:\\.\\d+){1,3}$/i.test(x.name))continue;
+      const dir=path.join(root,x.name);
+      const exe=findMultiExe(dir);
+      if(!exe||!fs.existsSync(exe))continue;
+      const version=readMultiVersion(exe,x.name);
+      rows.push({dir,exe,version});
+    }
+    rows.sort((a,b)=>compareVersions(b.version,a.version));
+    const best=rows[0];
+    if(best){
+      try{
+        fs.writeFileSync(path.join(best.dir,'.fireblaze-installed'),new Date().toISOString());
+        fs.writeFileSync(path.join(best.dir,'.fireblaze-exe'),best.exe);
+      }catch{}
+      return best.version;
+    }
+  }catch{}
+  return '';
 }
 function isMultiRunningAt(exePath){
   if(process.platform!=='win32'||!exePath)return false;
