@@ -195,12 +195,21 @@ function installedCandidates(){
 function installedVersionFromDisk(){
   const best=installedCandidates()[0]||null;
   if(!best)return '';
-  // Repara markers antigos automaticamente.
   try{
     fs.writeFileSync(path.join(best.dir,'.fireblaze-installed'),new Date().toISOString());
     fs.writeFileSync(path.join(best.dir,'.fireblaze-exe'),best.exe);
   }catch{}
   return best.version;
+}
+function markLatestInstalled(version,exePath){
+  try{
+    const v=String(version||'').replace(/^v/i,'');
+    if(!v)return;
+    const target=path.join(installedRoot(),v);
+    fs.mkdirSync(target,{recursive:true});
+    fs.writeFileSync(path.join(target,'.fireblaze-installed'),new Date().toISOString());
+    if(exePath && fs.existsSync(exePath))fs.writeFileSync(path.join(target,'.fireblaze-exe'),exePath);
+  }catch{}
 }
 function isMultiRunningAt(exePath){
   if(process.platform!=='win32'||!exePath)return false;
@@ -312,6 +321,7 @@ async function ensureInstalled(acc){
     execFileSync('attrib',['+H',installedRoot()],{windowsHide:true});
     execFileSync('attrib',['+H',target],{windowsHide:true});
   }catch{}
+  markLatestInstalled(version,found);
   win?.webContents.send('fb:install-progress',{stage:'done',progress:100});
   return {installed:true,path:found,version};
 }
@@ -361,6 +371,7 @@ async function installMultiOnly(){
   if(!acc.logged)throw new Error('Faça login.');
   if(!acc.active)throw new Error('Sua assinatura está inativa. Renove para atualizar o Multi.');
   const installed=await ensureInstalled(acc);
+  markLatestInstalled(installed.version,installed.path);
   return {ok:true,installed_version:installed.version};
 }
 async function renew(method){
