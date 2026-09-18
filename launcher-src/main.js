@@ -174,7 +174,6 @@ function installedCandidates(){
     for(const x of fs.readdirSync(root,{withFileTypes:true})){
       if(!x.isDirectory())continue;
       const dir=path.join(root,x.name);
-      if(!fs.existsSync(path.join(dir,'.fireblaze-installed')))continue;
       let exe='';
       try{
         const pathFile=path.join(dir,'.fireblaze-exe');
@@ -182,42 +181,26 @@ function installedCandidates(){
       }catch{}
       if(!exe||!fs.existsSync(exe))exe=findMultiExe(dir);
       if(!exe||!fs.existsSync(exe))continue;
-      rows.push({dir,exe,version:readMultiVersion(exe,x.name)});
+
+      // A pasta é a fonte de verdade da versão instalada pelo Launcher.
+      // Não deixa um package.json antigo dentro do pacote rebaixar 1.6.42 para 1.6.41.
+      let version=String(x.name||'').trim().replace(/^v/i,'');
+      if(!/^\\d+(?:\\.\\d+){1,3}$/.test(version))version=readMultiVersion(exe,x.name);
+      rows.push({dir,exe,version});
     }
     rows.sort((a,b)=>compareVersions(b.version,a.version));
     return rows;
   }catch{return [];}
 }
 function installedVersionFromDisk(){
-  const candidates=installedCandidates();
-  if(candidates[0]?.version)return candidates[0].version;
-
-  // Recuperação: versões antigas do Launcher só reconheciam instalações com marker.
-  // Se o Mult já existe em uma pasta de versão (ex.: ...\\Mult\\1.6.42),
-  // reconhece a versão pelo diretório/executável e recria os markers.
+  const best=installedCandidates()[0]||null;
+  if(!best)return '';
+  // Repara markers antigos automaticamente.
   try{
-    const root=installedRoot();
-    if(!fs.existsSync(root))return '';
-    const rows=[];
-    for(const x of fs.readdirSync(root,{withFileTypes:true})){
-      if(!x.isDirectory() || !/^v?\\d+(?:\\.\\d+){1,3}$/i.test(x.name))continue;
-      const dir=path.join(root,x.name);
-      const exe=findMultiExe(dir);
-      if(!exe||!fs.existsSync(exe))continue;
-      const version=readMultiVersion(exe,x.name);
-      rows.push({dir,exe,version});
-    }
-    rows.sort((a,b)=>compareVersions(b.version,a.version));
-    const best=rows[0];
-    if(best){
-      try{
-        fs.writeFileSync(path.join(best.dir,'.fireblaze-installed'),new Date().toISOString());
-        fs.writeFileSync(path.join(best.dir,'.fireblaze-exe'),best.exe);
-      }catch{}
-      return best.version;
-    }
+    fs.writeFileSync(path.join(best.dir,'.fireblaze-installed'),new Date().toISOString());
+    fs.writeFileSync(path.join(best.dir,'.fireblaze-exe'),best.exe);
   }catch{}
-  return '';
+  return best.version;
 }
 function isMultiRunningAt(exePath){
   if(process.platform!=='win32'||!exePath)return false;
