@@ -1,5 +1,4 @@
 const { app, BrowserWindow, ipcMain, shell, safeStorage, dialog } = require('electron');
-const { autoUpdater } = require('electron-updater');
 const path = require('path');
 const fs = require('fs');
 const os = require('os');
@@ -44,39 +43,8 @@ function findMultiExe(dir){
 function installedExe(version){ return findMultiExe(path.join(installedRoot(),version)); }
 function iconPath(){ return path.join(__dirname,'fire.ico'); }
 let updateCache={available:false,current:LAUNCHER_VERSION};
-autoUpdater.autoDownload=false;
-autoUpdater.autoInstallOnAppQuit=true;
-autoUpdater.allowPrerelease=false;
-
-autoUpdater.on('download-progress',p=>{
-  win?.webContents.send('fb:launcher-update-progress',{stage:'download',progress:Math.round(Number(p.percent||0))});
-});
-autoUpdater.on('update-downloaded',()=>{
-  win?.webContents.send('fb:launcher-update-progress',{stage:'install',progress:100});
-  setTimeout(()=>autoUpdater.quitAndInstall(false,true),300);
-});
-autoUpdater.on('error',err=>{
-  win?.webContents.send('fb:launcher-update-progress',{stage:'error',error:String(err?.message||err||'Falha ao atualizar.')});
-});
-
-async function launcherUpdate(){
-  try{
-    const result=await autoUpdater.checkForUpdates();
-    const latest=String(result?.updateInfo?.version||LAUNCHER_VERSION);
-    const available=compareVersions(latest,LAUNCHER_VERSION)>0;
-    updateCache={available,current:LAUNCHER_VERSION,latest};
-    return updateCache;
-  }catch(e){
-    updateCache={available:false,current:LAUNCHER_VERSION,error:String(e?.message||e)};
-    return updateCache;
-  }
-}
-async function runLauncherUpdate(){
-  const state=await launcherUpdate();
-  if(!state.available)throw new Error('Nenhuma atualização nova foi encontrada.');
-  await autoUpdater.downloadUpdate();
-  return {ok:true};
-}
+async function launcherUpdate(){ return updateCache; }
+async function runLauncherUpdate(){ throw new Error('Atualização automática do Launcher desativada nesta versão.'); }
 function versionParts(v){ return String(v||'0').replace(/^v/i,'').split('.').map(x=>Number(x)||0); }
 function compareVersions(a,b){ const A=versionParts(a),B=versionParts(b); for(let i=0;i<Math.max(A.length,B.length);i++){const d=(A[i]||0)-(B[i]||0);if(d)return d;} return 0; }
 
@@ -150,6 +118,7 @@ async function account(){
 }
 
 function readMultiVersion(exePath,fallback=''){
+  // A versão real vem do conteúdo instalado; o nome da pasta é apenas último fallback.
   try{
     const dir=path.dirname(exePath||'');
     const versionFile=path.join(dir,'version');
@@ -164,6 +133,14 @@ function readMultiVersion(exePath,fallback=''){
       if(v)return v;
     }
   }catch{}
+  // Electron empacotado normalmente usa app.asar; lê a versão do próprio EXE pelo Windows antes do fallback.
+  if(process.platform==='win32' && exePath){
+    try{
+      const escaped=String(exePath).replace(/'/g,"''");
+      const out=String(execFileSync('powershell.exe',['-NoProfile','-NonInteractive','-Command',"(Get-Item -LiteralPath '"+escaped+"').VersionInfo.ProductVersion"],{encoding:'utf8',windowsHide:true,timeout:5000})||'').trim().replace(/^v/i,'');
+      if(out)return out;
+    }catch{}
+  }
   return String(fallback||'').replace(/^v/i,'');
 }
 function installedCandidates(){
@@ -362,7 +339,7 @@ function createWindow(){
   win=new BrowserWindow({width:1060,height:720,minWidth:900,minHeight:620,backgroundColor:'#07090d',title:'FIRE BLAZE Launcher V2',icon:iconPath(),autoHideMenuBar:true,webPreferences:{preload:path.join(__dirname,'preload.js'),contextIsolation:true,nodeIntegration:false,sandbox:true}});
   win.loadFile('index.html');
 }
-ipcMain.handle('fb:state',async()=>({account:await account(),installed_version:installedVersionFromDisk(),device_name:deviceName(),launcher_version:LAUNCHER_VERSION,launcher_update:await launcherUpdate()}));
+ipcMain.handle('fb:state',async()=>({account:await account(),installed_version:installedVersionFromDisk(),device_name:deviceName(),launcher_version:LAUNCHER_VERSION,launcher_update:updateCache}));
 ipcMain.handle('fb:login',async(_e,email,password)=>{await login(String(email||'').trim(),String(password||''));removeLegacyMultiDesktopShortcut();return {ok:true,account:await account()};});
 ipcMain.handle('fb:logout',async()=>{saveAuth(null);return {ok:true};});
 ipcMain.handle('fb:launch',async()=>launchMulti());
