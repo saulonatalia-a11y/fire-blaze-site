@@ -187,7 +187,6 @@ function installedCandidates(){
     for(const x of fs.readdirSync(root,{withFileTypes:true})){
       if(!x.isDirectory())continue;
       const dir=path.join(root,x.name);
-      if(!fs.existsSync(path.join(dir,'.fireblaze-installed')))continue;
       let exe='';
       try{
         const pathFile=path.join(dir,'.fireblaze-exe');
@@ -195,7 +194,12 @@ function installedCandidates(){
       }catch{}
       if(!exe||!fs.existsSync(exe))exe=findMultiExe(dir);
       if(!exe||!fs.existsSync(exe))continue;
-      rows.push({dir,exe,version:readMultiVersion(exe,x.name)});
+      // A pasta criada pelo Launcher representa uma instalacao concluida.
+      // Nao descarte a versao nova apenas porque um marker antigo/ausente ficou inconsistente.
+      let version=String(x.name||'').trim().replace(/^v/i,'');
+      const embedded=readMultiVersion(exe,'');
+      if(embedded && compareVersions(embedded,version)>0)version=embedded;
+      rows.push({dir,exe,version});
     }
     rows.sort((a,b)=>compareVersions(b.version,a.version));
     return rows;
