@@ -163,6 +163,19 @@ function readMultiVersion(exePath,fallback=''){
       const v=String(pkg?.version||'').trim().replace(/^v/i,'');
       if(v)return v;
     }
+    // O Mult distribuido pelo Electron fica empacotado em resources/app.asar.
+    // Antes o Launcher nao lia esse arquivo e caia no nome da pasta antiga
+    // (ex.: 1.6.41), mesmo quando o Mult dentro dela ja era 1.6.42.
+    const asarFile=path.join(dir,'resources','app.asar');
+    if(fs.existsSync(asarFile)){
+      try{
+        const asar=require('@electron/asar');
+        const raw=asar.extractFile(asarFile,'package.json');
+        const pkg=JSON.parse(Buffer.isBuffer(raw)?raw.toString('utf8'):String(raw||''));
+        const v=String(pkg?.version||'').trim().replace(/^v/i,'');
+        if(v)return v;
+      }catch{}
+    }
   }catch{}
   return String(fallback||'').replace(/^v/i,'');
 }
