@@ -11,8 +11,9 @@ function compare(a,b){
   for(let i=0;i<Math.max(A.length,B.length);i++){const d=(A[i]||0)-(B[i]||0);if(d)return d}
   return 0;
 }
-function showLogin(){$('login-card').hidden=false;$('panel').hidden=true}
-function showPanel(){$('login-card').hidden=true;$('panel').hidden=false}
+function finishStartup(){const s=$('startup-screen');if(s)s.style.display='none'}
+function showLogin(){finishStartup();$('login-card').hidden=false;$('panel').hidden=true}
+function showPanel(){finishStartup();$('login-card').hidden=true;$('panel').hidden=false}
 function msg(t){$('panel-msg').textContent=t||''}
 
 function updateFooter(){
@@ -41,22 +42,22 @@ function renderAccount(a,installedVersion,launcherUpdate){
   const st=$('status'),warn=$('warn'),renew=$('renew-box'),launch=$('launch');
   if(a.active){
     const days=Number(a.days_remaining??0);
-    st.textContent='● ATIVA';
+    st.textContent=a.is_trial?'● TESTE GRÁTIS':'● ATIVA';
     st.className='status '+(a.warning?'warning':'active');
     $('days').textContent=days+' '+(days===1?'dia':'dias');
-    $('expires').textContent='Vence em '+fmtDate(a.subscription?.current_period_end);
+    $('expires').textContent=(a.is_trial?'Teste termina em ':'Vence em ')+fmtDate(a.subscription?.current_period_end);
     renew.style.display=(days<=3?'flex':'none');
     if(a.warning){
       warn.hidden=false;
-      warn.textContent='⚠ Sua assinatura termina em '+days+' dia'+(days===1?'':'s')+'. Renove para não interromper o acesso.';
+      warn.textContent=a.is_trial?('🎁 Seu teste grátis termina em '+days+' dia'+(days===1?'':'s')+'. Assine para continuar usando depois do teste.'):('⚠ Sua assinatura termina em '+days+' dia'+(days===1?'':'s')+'. Renove para não interromper o acesso.');
     }else warn.hidden=true;
   }else{
     st.textContent='● EXPIRADA / INATIVA';
     st.className='status expired';
     $('days').textContent='0 dias';
-    $('expires').textContent='Renove para voltar a usar o Multi.';
+    $('expires').textContent=current?.subscription?.access_kind==='trial'?'Teste grátis encerrado. Assine para liberar o Multi.':'Renove para voltar a usar o Multi.';
     warn.hidden=false;
-    warn.textContent='🔴 O acesso ao FIRE BLAZE Mult está bloqueado até a renovação.';
+    warn.textContent=current?.subscription?.access_kind==='trial'?'🔴 Seu teste grátis terminou. Sua conta continua conectada; assine para liberar o FIRE BLAZE Mult.':'🔴 O acesso ao FIRE BLAZE Mult está bloqueado até a renovação.';
     renew.style.display='flex';
   }
 
@@ -96,7 +97,7 @@ function renderAccount(a,installedVersion,launcherUpdate){
   }
 
   launch.disabled=!a.active || !!launcherUpdate?.available || mandatoryMulti;
-  launch.textContent=mandatoryMulti?'ATUALIZE O MULTI PARA CONTINUAR':'🔥 ABRIR MULTI';
+  launch.textContent=mandatoryMulti?'ATUALIZE O MULTI PARA CONTINUAR':(!a.active&&a.subscription?.access_kind==='trial'?'🔒 ASSINE PARA ABRIR O MULTI':'🔥 ABRIR MULTI');
   updateFooter();
 }
 
@@ -120,6 +121,12 @@ async function installLatestMulti(button,msgEl){
     if(msgEl)msgEl.textContent='Atualização concluída.';
     msg('Atualização concluída.');
     await reloadFullState();
+    // A instalação terminou: se o disco já reporta a versão publicada, feche imediatamente o modal obrigatório.
+    const latestNow=current?.latest_version?.version||'';
+    if(latestNow && installedVersionCache && compare(installedVersionCache,latestNow)>=0){
+      const modal=$('multi-update-modal'); if(modal)modal.style.display='none';
+      const launch=$('launch'); if(launch){launch.disabled=!current?.active || !!launcherUpdateCache?.available;launch.textContent='🔥 ABRIR MULTI';}
+    }
   }catch(e){
     const t=e.message||'Não foi possível atualizar o Multi.';
     if(msgEl)msgEl.textContent=t;
@@ -131,7 +138,7 @@ async function installLatestMulti(button,msgEl){
 
 async function load(){
   try{await reloadFullState()}
-  catch(e){$('login-msg').textContent=e.message||'Erro ao carregar.'}
+  catch(e){finishStartup();showLogin();$('login-msg').textContent=e.message||'Erro ao carregar.'}
 }
 
 $('login').onclick=async()=>{
