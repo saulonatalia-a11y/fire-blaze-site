@@ -43,8 +43,58 @@ function findMultiExe(dir){
 function installedExe(version){ return findMultiExe(path.join(installedRoot(),version)); }
 function iconPath(){ return path.join(__dirname,'fire.ico'); }
 let updateCache={available:false,current:LAUNCHER_VERSION};
-async function launcherUpdate(){ return updateCache; }
-async function runLauncherUpdate(){ throw new Error('Atualização automática do Launcher desativada nesta versão.'); }
+async function launcherUpdate(){
+  try{
+    const r=await fetch(LAUNCHER_RELEASE_API,{headers:{'Accept':'application/vnd.github+json','User-Agent':'FIRE-BLAZE-Launcher'}});
+    if(!r.ok)throw new Error('HTTP '+r.status);
+    const releases=await r.json();
+    const valid=(Array.isArray(releases)?releases:[])
+      .filter(x=>!x.draft&&!x.prerelease&&String(x.tag_name||'').startsWith('launcher-v'))
+      .map(x=>({
+        version:String(x.tag_name||'').replace(/^launcher-v/i,''),
+        asset:(x.assets||[]).find(a=>String(a.name||'').toLowerCase().endsWith('.exe'))
+      }))
+      .filter(x=>x.version&&x.asset?.browser_download_url)
+      .sort((a,b)=>compareVersions(b.version,a.version));
+    const latest=valid[0];
+    updateCache=latest&&compareVersions(latest.version,LAUNCHER_VERSION)>0
+      ? {available:true,current:LAUNCHER_VERSION,latest:latest.version,url:latest.asset.browser_download_url}
+      : {available:false,current:LAUNCHER_VERSION};
+  }catch{
+    // Falha de internet não bloqueia o Launcher nem o Mult.
+    updateCache={available:false,current:LAUNCHER_VERSION};
+  }
+  return updateCache;
+}
+async function runLauncherUpdate(){
+  const info=await launcherUpdate();
+  if(!info.available||!info.url)return {ok:true,upToDate:true};
+  const dir=path.join(app.getPath('temp'),'FIRE-BLAZE-Launcher-Update');
+  const installer=path.join(dir,'FIRE-BLAZE-Launcher-V2-Setup-v'+info.latest+'.exe');
+  fs.rmSync(dir,{recursive:true,force:true});
+  fs.mkdirSync(dir,{recursive:true});
+  const r=await fetch(info.url,{redirect:'follow',headers:{'User-Agent':'FIRE-BLAZE-Launcher'}});
+  if(!r.ok)throw new Error('Falha ao baixar atualização do Launcher ('+r.status+').');
+  const total=Number(r.headers.get('content-length')||0);
+  const fh=fs.openSync(installer,'w');
+  let done=0;
+  try{
+    const reader=r.body.getReader();
+    while(true){
+      const part=await reader.read();
+      if(part.done)break;
+      fs.writeSync(fh,Buffer.from(part.value));
+      done+=part.value.length;
+      win?.webContents.send('fb:launcher-update-progress',{stage:'download',progress:total?Math.round(done*100/total):0});
+    }
+  }finally{fs.closeSync(fh);}
+  if(!fs.existsSync(installer)||fs.statSync(installer).size<1024*1024)throw new Error('Instalador do Launcher inválido.');
+  win?.webContents.send('fb:launcher-update-progress',{stage:'install',progress:100});
+  const child=spawn(installer,['/S'],{detached:true,stdio:'ignore',windowsHide:false});
+  child.unref();
+  setTimeout(()=>app.quit(),700);
+  return {ok:true,installing:true,version:info.latest};
+}
 function versionParts(v){ return String(v||'0').replace(/^v/i,'').split('.').map(x=>Number(x)||0); }
 function compareVersions(a,b){ const A=versionParts(a),B=versionParts(b); for(let i=0;i<Math.max(A.length,B.length);i++){const d=(A[i]||0)-(B[i]||0);if(d)return d;} return 0; }
 
@@ -369,7 +419,7 @@ function createWindow(){
   win=new BrowserWindow({width:1060,height:720,minWidth:900,minHeight:620,backgroundColor:'#07090d',title:'FIRE BLAZE Launcher V2',icon:iconPath(),autoHideMenuBar:true,webPreferences:{preload:path.join(__dirname,'preload.js'),contextIsolation:true,nodeIntegration:false,sandbox:true}});
   win.loadFile('index.html');
 }
-ipcMain.handle('fb:state',async()=>({account:await account(),installed_version:installedVersionFromDisk(),device_name:deviceName(),launcher_version:LAUNCHER_VERSION,launcher_update:updateCache}));
+ipcMain.handle('fb:state',async()=>({account:await account(),installed_version:installedVersionFromDisk(),device_name:deviceName(),launcher_version:LAUNCHER_VERSION,launcher_update:await launcherUpdate()}));
 ipcMain.handle('fb:login',async(_e,email,password)=>{await login(String(email||'').trim(),String(password||''));removeLegacyMultiDesktopShortcut();return {ok:true,account:await account()};});
 ipcMain.handle('fb:logout',async()=>{saveAuth(null);return {ok:true};});
 ipcMain.handle('fb:launch',async()=>launchMulti());
