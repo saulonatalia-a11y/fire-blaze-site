@@ -21,12 +21,24 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+      - shell: powershell
+        run: |-
+          [IO.File]::WriteAllBytes('fire.jpg',[Convert]::FromBase64String((Get-Content 'fire.jpg.b64' -Raw)))
+          Add-Type -AssemblyName System.Drawing
+          $bmp = New-Object System.Drawing.Bitmap 256,256
+          $g=[System.Drawing.Graphics]::FromImage($bmp)
+          $img=[System.Drawing.Image]::FromFile((Resolve-Path 'fire.jpg'))
+          $g.DrawImage($img,0,0,256,256)
+          $hIcon=$bmp.GetHicon()
+          $ico=[System.Drawing.Icon]::FromHandle($hIcon)
+          $fs=[IO.File]::Create('fire.ico')
+          $ico.Save($fs); $fs.Close(); $g.Dispose(); $img.Dispose(); $bmp.Dispose()
       - run: npm install
       - run: npm run dist
       - uses: softprops/action-gh-release@v2
         with:
-          tag_name: launcher-v2.0.6
-          name: FIRE BLAZE Launcher V2 v2.0.6
+          tag_name: launcher-v2.0.7
+          name: FIRE BLAZE Launcher V2 v2.0.7
           body: Launcher V2 separado do Launcher antigo.
-          files: launcher-v2-src/dist/FIRE-BLAZE-Launcher-V2-Setup-v2.0.6.exe
+          files: launcher-v2-src/dist/FIRE-BLAZE-Launcher-V2-Setup-v2.0.7.exe
           make_latest: false
