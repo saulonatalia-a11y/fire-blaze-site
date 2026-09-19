@@ -1,0 +1,1 @@
+const {contextBridge,ipcRenderer}=require('electron');contextBridge.exposeInMainWorld('launcherV2',{startup:()=>ipcRenderer.invoke('v2:startup'),login:(e,p)=>ipcRenderer.invoke('v2:login',e,p),logout:()=>ipcRenderer.invoke('v2:logout')});
