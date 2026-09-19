@@ -1,6 +1,6 @@
 {
   "name": "fire-blaze-launcher-v2",
-  "version": "2.0.6",
+  "version": "2.0.7",
   "private": true,
   "productName": "FIRE BLAZE Launcher V2",
   "main": "main.js",
@@ -22,13 +22,16 @@
       "preload.js",
       "renderer.js",
       "index.html",
-      "style.css"
+      "style.css",
+      "fire.jpg",
+      "fire.ico"
     ],
     "win": {
       "target": [
         "nsis"
       ],
-      "artifactName": "FIRE-BLAZE-Launcher-V2-Setup-v${version}.${ext}"
+      "artifactName": "FIRE-BLAZE-Launcher-V2-Setup-v${version}.${ext}",
+      "icon": "fire.ico"
     },
     "nsis": {
       "oneClick": true,
