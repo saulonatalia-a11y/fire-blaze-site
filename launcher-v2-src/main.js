@@ -168,6 +168,17 @@ function installedCandidates(){
 function installedVersionFromDisk(){
   return installedCandidates()[0]?.version||'';
 }
+function removeOldInstalledVersions(keepVersion){
+  try{
+    const root=installedRoot();
+    if(!fs.existsSync(root))return;
+    for(const x of fs.readdirSync(root,{withFileTypes:true})){
+      if(!x.isDirectory())continue;
+      const v=String(x.name||'').replace(/^v/i,'');
+      if(v && compareVersions(v,keepVersion)<0)fs.rmSync(path.join(root,x.name),{recursive:true,force:true});
+    }
+  }catch{}
+}
 function isMultiRunningAt(exePath){
   if(process.platform!=='win32'||!exePath)return false;
   try{
@@ -290,7 +301,9 @@ async function ensureInstalled(acc){
     fs.rmSync(target,{recursive:true,force:true});
     throw new Error('O pacote publicado como v'+version+' contém o Mult v'+realVersion+'. Corrija o pacote v'+version+' no Admin/GitHub.');
   }
-  return {installed:true,path:found,version:realVersion||version};
+  const installedVersion=realVersion||version;
+  removeOldInstalledVersions(installedVersion);
+  return {installed:true,path:found,version:installedVersion};
 }
 async function issueTicket(){
   return api(LICENSE_URL+'?action=issue_ticket',{device_hash:deviceHash(),device_name:deviceName()});
@@ -338,7 +351,11 @@ async function installMultiOnly(){
   if(!acc.logged)throw new Error('Faça login.');
   if(!acc.active)throw new Error('Sua assinatura está inativa. Renove para atualizar o Multi.');
   const installed=await ensureInstalled(acc);
-  return {ok:true,installed_version:installed.version};
+  const actual=readMultiVersion(installed.path,installed.version);
+  const expected=String(acc?.latest_version?.version||'').replace(/^v/i,'');
+  if(expected && compareVersions(actual,expected)<0)throw new Error('Atualização não aplicada: esperado v'+expected+', encontrado v'+actual+'.');
+  removeOldInstalledVersions(actual||expected);
+  return {ok:true,installed_version:actual||installed.version};
 }
 async function renew(method){
   const data=await api(CHECKOUT_URL,{method});
