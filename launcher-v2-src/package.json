@@ -24,7 +24,9 @@
       "index.html",
       "style.css",
       "fire.jpg",
-      "fire.ico"
+      "fire.ico",
+      "icon.png",
+      "banner.jpg"
     ],
     "win": {
       "target": [
