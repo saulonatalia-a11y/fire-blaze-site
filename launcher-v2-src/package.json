@@ -1,0 +1,42 @@
+{
+  "name": "fire-blaze-launcher-v2",
+  "version": "2.0.0-alpha.1",
+  "private": true,
+  "productName": "FIRE BLAZE Launcher V2",
+  "main": "main.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder --win nsis --publish never"
+  },
+  "devDependencies": {
+    "electron": "^39.0.0",
+    "electron-builder": "^26.0.12"
+  },
+  "build": {
+    "appId": "com.fireblaze.launcher.v2",
+    "productName": "FIRE BLAZE Launcher V2",
+    "asar": true,
+    "files": [
+      "main.js",
+      "preload.js",
+      "renderer.js",
+      "index.html",
+      "style.css"
+    ],
+    "win": {
+      "target": [
+        "nsis"
+      ],
+      "artifactName": "FIRE-BLAZE-Launcher-V2-Setup-v${version}.${ext}"
+    },
+    "nsis": {
+      "oneClick": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "FIRE BLAZE Launcher V2",
+      "perMachine": false,
+      "deleteAppDataOnUninstall": false
+    }
+  }
+}
