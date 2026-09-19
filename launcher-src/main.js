@@ -163,19 +163,6 @@ function readMultiVersion(exePath,fallback=''){
       const v=String(pkg?.version||'').trim().replace(/^v/i,'');
       if(v)return v;
     }
-    // O Mult distribuido pelo Electron fica empacotado em resources/app.asar.
-    // Antes o Launcher nao lia esse arquivo e caia no nome da pasta antiga
-    // (ex.: 1.6.41), mesmo quando o Mult dentro dela ja era 1.6.42.
-    const asarFile=path.join(dir,'resources','app.asar');
-    if(fs.existsSync(asarFile)){
-      try{
-        const asar=require('@electron/asar');
-        const raw=asar.extractFile(asarFile,'package.json');
-        const pkg=JSON.parse(Buffer.isBuffer(raw)?raw.toString('utf8'):String(raw||''));
-        const v=String(pkg?.version||'').trim().replace(/^v/i,'');
-        if(v)return v;
-      }catch{}
-    }
   }catch{}
   return String(fallback||'').replace(/^v/i,'');
 }
@@ -187,6 +174,7 @@ function installedCandidates(){
     for(const x of fs.readdirSync(root,{withFileTypes:true})){
       if(!x.isDirectory())continue;
       const dir=path.join(root,x.name);
+      if(!fs.existsSync(path.join(dir,'.fireblaze-installed')))continue;
       let exe='';
       try{
         const pathFile=path.join(dir,'.fireblaze-exe');
@@ -194,12 +182,7 @@ function installedCandidates(){
       }catch{}
       if(!exe||!fs.existsSync(exe))exe=findMultiExe(dir);
       if(!exe||!fs.existsSync(exe))continue;
-      // A pasta criada pelo Launcher representa uma instalacao concluida.
-      // Nao descarte a versao nova apenas porque um marker antigo/ausente ficou inconsistente.
-      let version=String(x.name||'').trim().replace(/^v/i,'');
-      const embedded=readMultiVersion(exe,'');
-      if(embedded && compareVersions(embedded,version)>0)version=embedded;
-      rows.push({dir,exe,version});
+      rows.push({dir,exe,version:readMultiVersion(exe,x.name)});
     }
     rows.sort((a,b)=>compareVersions(b.version,a.version));
     return rows;
