@@ -121,15 +121,17 @@ function readMultiVersion(exePath,fallback=''){
   // A versão real vem do conteúdo instalado; o nome da pasta é apenas último fallback.
   try{
     const dir=path.dirname(exePath||'');
-    const versionFile=path.join(dir,'version');
-    if(fs.existsSync(versionFile)){
-      const v=String(fs.readFileSync(versionFile,'utf8')||'').trim().replace(/^v/i,'');
-      if(v)return v;
-    }
+    // package.json é a versão real do app Electron (app.getVersion()).
+    // O arquivo "version" de pacotes antigos pode estar defasado e não deve ter prioridade.
     const pkgFile=path.join(dir,'resources','app','package.json');
     if(fs.existsSync(pkgFile)){
       const pkg=JSON.parse(fs.readFileSync(pkgFile,'utf8'));
       const v=String(pkg?.version||'').trim().replace(/^v/i,'');
+      if(v)return v;
+    }
+    const versionFile=path.join(dir,'version');
+    if(fs.existsSync(versionFile)){
+      const v=String(fs.readFileSync(versionFile,'utf8')||'').trim().replace(/^v/i,'');
       if(v)return v;
     }
   }catch{}
