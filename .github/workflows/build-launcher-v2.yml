@@ -37,8 +37,8 @@ jobs:
       - run: npm run dist
       - uses: softprops/action-gh-release@v2
         with:
-          tag_name: launcher-v2.0.7
-          name: FIRE BLAZE Launcher V2 v2.0.7
+          tag_name: launcher-v2.0.8
+          name: FIRE BLAZE Launcher V2 v2.0.8
           body: Launcher V2 separado do Launcher antigo.
-          files: launcher-v2-src/dist/FIRE-BLAZE-Launcher-V2-Setup-v2.0.7.exe
+          files: launcher-v2-src/dist/FIRE-BLAZE-Launcher-V2-Setup-v2.0.8.exe
           make_latest: false
