@@ -1,6 +1,6 @@
 {
   "name": "fire-blaze-launcher-v2",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "private": true,
   "productName": "FIRE BLAZE Launcher V2",
   "main": "main.js",
@@ -38,5 +38,8 @@
       "perMachine": false,
       "deleteAppDataOnUninstall": false
     }
+  },
+  "dependencies": {
+    "electron-updater": "^6.6.2"
   }
 }
