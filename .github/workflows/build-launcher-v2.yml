@@ -4,7 +4,10 @@ on:
     branches: [ launcher-v2 ]
     paths:
       - 'launcher-v2-src/**'
+      - '.github/workflows/build-launcher-v2.yml'
   workflow_dispatch:
+permissions:
+  contents: write
 jobs:
   build:
     runs-on: windows-latest
@@ -13,12 +16,17 @@ jobs:
         working-directory: launcher-v2-src
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: launcher-v2
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
       - run: npm install
       - run: npm run dist
-      - uses: actions/upload-artifact@v4
+      - uses: softprops/action-gh-release@v2
         with:
-          name: FIRE-BLAZE-Launcher-V2
-          path: launcher-v2-src/dist/*.exe
+          tag_name: launcher-v2.0.0
+          name: FIRE BLAZE Launcher V2 v2.0.0
+          body: Launcher V2 separado do Launcher antigo.
+          files: launcher-v2-src/dist/FIRE-BLAZE-Launcher-V2-Setup-v2.0.0.exe
+          make_latest: false
