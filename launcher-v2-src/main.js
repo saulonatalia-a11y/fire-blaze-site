@@ -216,20 +216,26 @@ async function ensureInstalled(acc){
   const marker=path.join(target,'.fireblaze-installed');
   const pathFile=path.join(target,'.fireblaze-exe');
 
+  // Só considera a versão alvo instalada quando o conteúdo realmente declara a mesma versão.
+  // Isso evita aceitar uma pasta 1.6.42 contendo, por engano, o executável 1.6.41.
   if(fs.existsSync(marker) && fs.existsSync(pathFile)){
     try{
       const remembered=String(fs.readFileSync(pathFile,'utf8')||'').trim();
-      if(remembered && fs.existsSync(remembered))return {installed:true,path:remembered,version};
+      if(remembered && fs.existsSync(remembered) && compareVersions(readMultiVersion(remembered,''),version)>=0)
+        return {installed:true,path:remembered,version:readMultiVersion(remembered,version)};
     }catch{}
   }
 
   const direct=installedExe(version);
-  if(fs.existsSync(direct)){
+  if(fs.existsSync(direct) && compareVersions(readMultiVersion(direct,''),version)>=0){
     fs.mkdirSync(target,{recursive:true});
     fs.writeFileSync(marker,new Date().toISOString());
     fs.writeFileSync(pathFile,direct);
-    return {installed:true,path:direct,version};
+    return {installed:true,path:direct,version:readMultiVersion(direct,version)};
   }
+
+  // Se existe uma instalação incompleta/incorreta da versão alvo, apaga antes de baixar novamente.
+  if(fs.existsSync(target))fs.rmSync(target,{recursive:true,force:true});
 
   if(!latest.download_url)throw new Error('O pacote do FIRE BLAZE Mult ainda não foi publicado no servidor.');
 
@@ -279,7 +285,12 @@ async function ensureInstalled(acc){
     execFileSync('attrib',['+H',target],{windowsHide:true});
   }catch{}
   win?.webContents.send('fb:install-progress',{stage:'done',progress:100});
-  return {installed:true,path:found,version};
+  const realVersion=readMultiVersion(found,'');
+  if(realVersion && compareVersions(realVersion,version)<0){
+    fs.rmSync(target,{recursive:true,force:true});
+    throw new Error('O pacote publicado como v'+version+' contém o Mult v'+realVersion+'. Corrija o pacote v'+version+' no Admin/GitHub.');
+  }
+  return {installed:true,path:found,version:realVersion||version};
 }
 async function issueTicket(){
   return api(LICENSE_URL+'?action=issue_ticket',{device_hash:deviceHash(),device_name:deviceName()});
