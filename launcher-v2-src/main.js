@@ -433,7 +433,8 @@ ipcMain.handle('fb:launcher-update',async()=>runLauncherUpdate());
 if(!app.requestSingleInstanceLock())app.quit();
 else{
   app.on('second-instance',()=>{if(win){if(win.isMinimized())win.restore();win.show();win.focus();}});
-  app.whenReady().then(()=>{app.setAppUserModelId('FIREBLAZE.LauncherV2');loadAuth();hideInternalTree();removeLegacyMultiDesktopShortcut();createWindow();});
+  app.setAppUserModelId('com.fireblaze.launcher.v2');
+app.whenReady().then(()=>{app.setAppUserModelId('FIREBLAZE.LauncherV2');loadAuth();hideInternalTree();removeLegacyMultiDesktopShortcut();createWindow();});
   app.on('activate',()=>{if(BrowserWindow.getAllWindows().length===0)createWindow();});
   app.on('window-all-closed',()=>{if(process.platform!=='darwin')app.quit();});
 }
