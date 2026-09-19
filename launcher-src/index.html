@@ -1,5 +1,5 @@
 <!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>FIRE BLAZE Launcher</title><link rel="stylesheet" href="style.css"></head>
-<body><div id="mandatory-update-modal" style="display:none;position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.78);place-items:center;padding:24px">
+<body><div id="startup-screen" style="position:fixed;inset:0;z-index:100000;background:#07090d;display:grid;place-items:center"><div style="text-align:center"><div style="font-size:56px">🔥</div><h1 style="margin:10px 0 6px">FIRE BLAZE</h1><div class="muted">Carregando sua conta...</div></div></div><div id="mandatory-update-modal" style="display:none;position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.78);place-items:center;padding:24px">
   <div style="width:min(520px,100%);background:#111820;border:1px solid #ff612d;border-radius:18px;padding:28px;box-shadow:0 24px 80px rgba(0,0,0,.6);text-align:center">
     <div class="kicker">ATUALIZAÇÃO OBRIGATÓRIA</div>
     <h1 id="mandatory-update-title" style="margin:10px 0 12px">Atualizar Launcher</h1>
@@ -16,7 +16,7 @@
     <div id="multi-update-msg" class="msg" style="margin-top:12px"></div>
   </div>
 </div><div class="shell"><header><div class="brand"><span class="flame">🔥</span><div><b>FIRE BLAZE</b><small>Launcher / Painel</small></div></div><div id="device" class="muted"></div></header><main>
-<section id="login-card" class="card login-card"><div class="kicker">ACESSO FIRE BLAZE</div><h1>Entre na sua conta</h1><p>Use o mesmo e-mail e senha cadastrados no site.</p><label>E-mail<input id="email" type="email" autocomplete="email"></label><label>Senha<input id="password" type="password" autocomplete="current-password"></label><div id="login-msg" class="msg"></div><button id="login" class="btn primary full">ENTRAR</button></section>
+<section id="login-card" class="card login-card" hidden><div class="kicker">ACESSO FIRE BLAZE</div><h1>Entre na sua conta</h1><p>Use o mesmo e-mail e senha cadastrados no site.</p><label>E-mail<input id="email" type="email" autocomplete="email"></label><label>Senha<input id="password" type="password" autocomplete="current-password"></label><div id="login-msg" class="msg"></div><button id="login" class="btn primary full">ENTRAR</button></section>
 <section id="panel" hidden><div class="hero card"><div><div class="kicker">CONTA</div><h1 id="hello">Olá</h1><p id="email-line" class="muted"></p></div><button id="logout" class="btn ghost">Sair</button></div><div class="grid">
 <section id="subscription" class="card"><div class="kicker">ASSINATURA</div><div id="status" class="status">—</div><div id="days" class="days">—</div><div id="expires" class="muted">—</div><div id="warn" class="warning" hidden></div></section>
 <section class="card"><div class="kicker">VERSÃO</div><h2 id="installed-version">Verificando...</h2><div id="update-state" class="muted">Verificando atualizações...</div><div id="changelog" class="changelog"></div><button id="update" class="btn ghost full" hidden>ATUALIZAR</button></section></div>
